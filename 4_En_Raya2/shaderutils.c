@@ -5,10 +5,11 @@
 
 char* readShaderSource(const char* filepath)
 {
+    // Funció per llegir el codi GLSL d'un arxiu i guardar-ho a un string
     char* buffer;
     long length;
 
-    // Microsoft obliga a utilitzar fopen_s, canviar a fopen en cas d'utilitzar un altre compilador
+    // El compilador de MSVC obliga a utilitzar fopen_s, canviar a fopen en cas d'utilitzar un altre compilador
     //FILE* sourceFile = fopen(filepath, "rb"); // Obrim en mode binari
     FILE* sourceFile;
     fopen_s(&sourceFile, filepath, "rb");

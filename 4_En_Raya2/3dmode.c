@@ -1,9 +1,12 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <cglm/cglm.h>
 #include "shaderutils.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -12,6 +15,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 const char vertexShaderPath[] = "shaders/vertshader.vert";
 const char fragmentShaderPath[] = "shaders/fragshader.frag";
+
 
 int main()
 {
@@ -82,9 +86,9 @@ int main()
 	};  // right
 	// segon triangle
 	float vertices2[] = {
-	 0.0f,  0.0f, 0.0f,  1.0f, 1.0f, 1.0f,
-	 0.5f,  1.0f, 0.0f,  0.0f, 0.0f, 0.0f,  // bottom left
-	 1.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // top left 
+		 0.0f,  0.0f, 0.0f,  1.0f, 1.0f, 1.0f,
+		 0.5f,  1.0f, 0.0f,  0.0f, 0.0f, 0.0f,  // bottom left
+		 1.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // top left 
 	};
 	float* vertices[] = { vertices1, vertices2 };
 
@@ -120,6 +124,11 @@ int main()
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 	*/
 	
+	vec4 vec = { 1.0f, 0.0f, 0.0f, 1.0f };
+	mat4 trans;
+	glm_translate_make(trans, (vec3){ 1.0f, 1.0f, 0.0f });
+	glm_mat4_mulv(trans, vec, vec);
+	printf("(%f, %f, %f, %f)\n", vec[0], vec[1], vec[2], vec[3]);
 
 	// Render loop
 	while (!glfwWindowShouldClose(window))
