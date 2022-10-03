@@ -24,6 +24,9 @@
     <ClCompile Include="glad\glad.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="camera.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderutils.h">

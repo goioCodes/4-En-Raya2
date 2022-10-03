@@ -138,6 +138,7 @@
     <ClCompile Include="3dmode.c" />
     <ClCompile Include="glad\glad.c" />
     <ClCompile Include="shaderutils.c" />
+    <ClCompile Include="camera.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderutils.h" />
