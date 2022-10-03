@@ -146,3 +146,18 @@ unsigned int linkProgram(unsigned int* shaders, int n)
 
     return shaderProgram;
 }
+
+void setUniformi(unsigned int program, const char* name, int value)
+{
+    glUniform1i(glGetUniformLocation(program, name), value);
+}
+
+void setUniformf(unsigned int program, const char* name, float value)
+{
+    glUniform1f(glGetUniformLocation(program, name), value);
+}
+
+void setUniformMat4f(unsigned int program, const char* name, bool transpose, float* mat)
+{
+    glUniformMatrix4fv(glGetUniformLocation(program, name), 1, transpose, mat);
+}
