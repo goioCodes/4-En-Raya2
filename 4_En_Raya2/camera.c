@@ -1,41 +1,21 @@
 #include <cglm/call.h>
-
-const float YAW = -90.f;
-const float PITCH = 0.f;
-const float SENSITIVITY = 0.1f;
-const float MOVEMENTSPEED = 2.5f;
-const vec3 FRONT = { 0.f, 0.f, -1.f };
-
-typedef enum camera_movement {
-    FORWARD,
-    BACKWARD,
-    LEFT,
-    RIGHT
-} Camera_Movement;
-
-typedef struct camera {
-    vec3 position;
-    vec3 front;
-    vec3 up;
-    vec3 right;
-    vec3 worldUp;
-
-    float yaw;
-    float pitch;
-
-    float movementSpeed;
-    float mouseSensitivity;
-} Camera;
+#include <math.h>
+#include "camera.h"
 
 void updateCamVectors(Camera* cam);
 
-void initializeCamera(Camera* cam, vec3 position, vec3 up)
+const float YAW = -90.f;
+const float PITCH = 0.f;
+const vec3 WORLDUP = { 0.f, 1.f, 0.f };
+const float SENSITIVITY = 0.1f;
+const float MOVEMENTSPEED = 2.5f;
+
+void cameraInitialize(Camera* cam, const vec3 position)
 {
     for (int i = 0; i < 3; i++)
     {
         cam->position[i] = position[i];
-        cam->worldUp[i] = up[i];
-        cam->front[i] = FRONT[i];
+        cam->worldUp[i] = WORLDUP[i];
     }
     cam->yaw = YAW;
     cam->pitch = PITCH;
@@ -51,19 +31,17 @@ void updateCamVectors(Camera* cam)
     cam->front[2] = sinf(glm_rad(cam->yaw)) * cosf(glm_rad(cam->pitch));
     glm_vec3_normalize(cam->front);
 
-    glm_vec3_cross(cam->front, cam->worldUp, cam->right);
-    glm_vec3_normalize(cam->right);
-    glm_vec3_cross(cam->right, cam->front, cam->up);
-    glm_vec3_normalize(cam->up);
+    glm_vec3_crossn(cam->front, cam->worldUp, cam->right);
+    glm_vec3_crossn(cam->right, cam->front, cam->up);
 
 }
 
-void processMouseMovement(Camera* cam, float xoffset, float yoffset)
+void cameraProcessMouseMovement(Camera* cam, float xoffset, float yoffset)
 {   
     xoffset *= cam->mouseSensitivity;
     yoffset *= cam->mouseSensitivity;
-
-    cam->yaw += xoffset;
+    
+    cam->yaw = fmodf(cam->yaw + xoffset, 360.f);
     cam->pitch += yoffset;
 
     if (cam->pitch > 89.f)
@@ -78,7 +56,7 @@ void processMouseMovement(Camera* cam, float xoffset, float yoffset)
     updateCamVectors(cam);
 }
 
-void processKeyborad(Camera* cam, Camera_Movement direction, float deltaTime)
+void cameraProcessKeyborad(Camera* cam, Camera_Movement direction, float deltaTime)
 {
     float velocity = cam->movementSpeed * deltaTime;
     vec3 temp;
@@ -102,4 +80,11 @@ void processKeyborad(Camera* cam, Camera_Movement direction, float deltaTime)
         glm_vec3_scale(cam->right, velocity, temp);
         glm_vec3_add(cam->position, temp, cam->position);
     }
+}
+
+void cameraGetViewMatrix(Camera* cam, mat4 dest)
+{
+    vec3 sum;
+    glm_vec3_add(cam->position, cam->front, sum);
+    glm_lookat(cam->position, sum, cam->up, dest);
 }

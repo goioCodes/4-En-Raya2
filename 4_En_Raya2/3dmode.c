@@ -7,10 +7,12 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <cglm/call.h>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
 #include "shaderutils.h"
+#include "camera.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -20,15 +22,18 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 const char vertexShaderPath[] = "shaders/vertshader.vert";
 const char fragmentShaderPath[] = "shaders/fragshader.frag";
 
-float lastX = 400, lastY = 300;
+#define SCR_WIDTH_INIT 800
+#define SCR_HEIGHT_INIT 600
+
+unsigned int SCR_WIDTH = SCR_WIDTH_INIT;
+unsigned int SCR_HEIGHT = SCR_HEIGHT_INIT;
+
+float lastX = SCR_WIDTH_INIT / 2.0f;
+float lastY = SCR_HEIGHT_INIT / 2.0f;
 bool firstMouse = true;
 
-vec3 cameraPos = { 0.f, 0.f, 3.f };
-vec3 cameraDirection = { 0.f, 0.f, -1.f };
-vec3 cameraUp = { 0.f, 1.f, 0.f };
-
-float yaw = -90.f;
-float pitch = 0.f;
+Camera camera;
+const vec3 initialCameraPos = { 0.f, 0.f, 3.f };
 
 float deltaTime = 0.f;
 float lastFrame = 0.f;
@@ -65,7 +70,7 @@ int main()
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-	
+
 
 	unsigned int shaders[2];
 	// VERTEX SHADER
@@ -248,9 +253,12 @@ int main()
 	//glm_vec3_cross(cameraDirection, cameraRight, cameraUp);
 	//// Matriu del canvi de base de coordenades de world a coordenades de camera
 	
-
+	cameraInitialize(&camera, initialCameraPos);
+	glfwSetCursorPos(window, lastX, lastY);
 	// Render loop
-	// +------[]------+------[]------+------[]------+------[]------+------[]------+------[]------+
+	// +------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+
+	//[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]
+	// +------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(0.2f, 0.3f, 0.3f, 0.1f);
@@ -263,18 +271,11 @@ int main()
 		glfwPollEvents();
 		processInput(window);
 
-		cameraDirection[0] = cosf(glm_rad(yaw)) * cosf(glm_rad(pitch));
-		cameraDirection[1] = sinf(glm_rad(pitch));
-		cameraDirection[2] = sinf(glm_rad(yaw)) * cos(glm_rad(pitch));
-		glm_vec3_normalize(cameraDirection);
 		mat4 view = GLM_MAT4_IDENTITY_INIT;
-		vec3 sum = GLM_VEC3_ZERO_INIT;
-		glm_vec3_add(cameraPos, cameraDirection, sum);
-		glm_lookat(cameraPos, sum, cameraUp, view);
-
+		cameraGetViewMatrix(&camera, view);
 
 		mat4 projection = GLM_MAT4_ZERO_INIT;
-		glm_perspective(glm_rad(60.f), 800.f / 600.f, .1f, 100.f, projection);
+		glm_perspective(glm_rad(60.f), (float)SCR_WIDTH / (float)SCR_HEIGHT, .1f, 100.f, projection);
 
 		glUseProgram(shaderProgram);
 
@@ -316,34 +317,24 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	}
 }
 
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+void mouse_callback(GLFWwindow* window, double xposd, double yposd)
 {
-	if (firstMouse)
-	{
-		lastX = xpos;
-		lastY = ypos;
-		firstMouse = false;
-	}
+	float xpos = (float)xposd;
+	float ypos = (float)yposd;
 
 	float xoffset = xpos - lastX;
-	float yoffset = lastY - ypos; // reversed since y-coordinates range from bottom to top
+	float yoffset = lastY - ypos; // les coordenades es prenen des del costat superior esquerra
 	lastX = xpos;
 	lastY = ypos;
 
-	const float sensitivity = 0.1f;
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
-	yaw += xoffset;
-	pitch += yoffset;
-	if (pitch > 89.0f)
-		pitch = 89.0f;
-	if (pitch < -89.0f)
-		pitch = -89.0f;
+	cameraProcessMouseMovement(&camera, xoffset, yoffset);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
 	glViewport(0, 0, width, height);
+	SCR_WIDTH = width;
+	SCR_HEIGHT = height;
 }
 
 void processInput(GLFWwindow* window)
@@ -352,33 +343,20 @@ void processInput(GLFWwindow* window)
 		glfwSetWindowShouldClose(window, true);
 
 
-	const float cameraSpeed = 2.5f * deltaTime; // Multiplicar per deltaTime elimina la dependencia dels fps
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		vec3 mult = GLM_VEC3_ZERO_INIT;
-		glm_vec3_scale(cameraDirection, cameraSpeed, mult);
-		glm_vec3_add(cameraPos, mult, cameraPos);
+		cameraProcessKeyborad(&camera, FORWARD, deltaTime);
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		vec3 mult = GLM_VEC3_ZERO_INIT;
-		glm_vec3_scale(cameraDirection, cameraSpeed, mult);
-		glm_vec3_sub(cameraPos, mult, cameraPos);
+		cameraProcessKeyborad(&camera, BACKWARD, deltaTime);
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		vec3 right = GLM_VEC3_ZERO_INIT;
-		glm_vec3_cross(cameraDirection, cameraUp, right);
-		glm_vec3_normalize(right);
-		glm_vec3_scale(right, cameraSpeed, right);
-		glm_vec3_sub(cameraPos, right, cameraPos);
+		cameraProcessKeyborad(&camera, LEFT, deltaTime);
 	}
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		vec3 right = GLM_VEC3_ZERO_INIT;
-		glm_vec3_cross(cameraDirection, cameraUp, right);
-		glm_vec3_normalize(right);
-		glm_vec3_scale(right, cameraSpeed, right);
-		glm_vec3_add(cameraPos, right, cameraPos);
+		cameraProcessKeyborad(&camera, RIGHT, deltaTime);
 	}
 }
