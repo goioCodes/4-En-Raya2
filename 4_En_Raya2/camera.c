@@ -6,6 +6,7 @@ const vec3 FRONT = { 0.f, 0.f, -1.f };
 
 typedef struct camera {
     vec3 position;
+    vec3 front;
     vec3 up;
     vec3 front;
     vec3 right;
@@ -44,7 +45,7 @@ void updateCamVectors(Camera* cam)
 }
 
 void processMouseEvent(Camera* cam, float xoffset, float yoffset)
-{
+{   
     cam->yaw += xoffset;
     cam->pitch += yoffset;
 

@@ -144,6 +144,7 @@
     <ClInclude Include="shaderutils.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cglm-0.dll" />
     <None Include="Shaders\fragshader.frag" />
     <None Include="Shaders\vertshader.vert" />
   </ItemGroup>

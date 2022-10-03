@@ -40,5 +40,8 @@
     <None Include="Shaders\vertshader.vert">
       <Filter>Archivos de recursos</Filter>
     </None>
+    <None Include="cglm-0.dll">
+      <Filter>Archivos de recursos</Filter>
+    </None>
   </ItemGroup>
 </Project>
