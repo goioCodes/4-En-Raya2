@@ -1,3 +1,4 @@
+#include <cglm/call.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -157,7 +158,12 @@ void setUniformf(unsigned int program, const char* name, float value)
     glUniform1f(glGetUniformLocation(program, name), value);
 }
 
-void setUniformMat4f(unsigned int program, const char* name, bool transpose, float* mat)
+void setUniformMat4(unsigned int program, const char* name, bool transpose, float* mat)
 {
     glUniformMatrix4fv(glGetUniformLocation(program, name), 1, transpose, mat);
+}
+
+void setUniformVec3(unsigned int program, const char* name, vec3 vec)
+{
+    glUniform3f(glGetUniformLocation(program, name), vec[0], vec[1], vec[2]);
 }

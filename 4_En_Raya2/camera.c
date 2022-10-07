@@ -29,10 +29,9 @@ void updateCamVectors(Camera* cam)
     cam->front[0] = cosf(glm_rad(cam->yaw)) * cosf(glm_rad(cam->pitch));
     cam->front[1] = sinf(glm_rad(cam->pitch));
     cam->front[2] = sinf(glm_rad(cam->yaw)) * cosf(glm_rad(cam->pitch));
-    glm_vec3_normalize(cam->front);
 
     glm_vec3_crossn(cam->front, cam->worldUp, cam->right);
-    glm_vec3_crossn(cam->right, cam->front, cam->up);
+    glm_vec3_cross(cam->right, cam->front, cam->up);
 
 }
 

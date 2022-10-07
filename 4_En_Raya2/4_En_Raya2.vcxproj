@@ -152,6 +152,7 @@
   <ItemGroup>
     <None Include="cglm-0.dll" />
     <None Include="Shaders\fragshader.frag" />
+    <None Include="Shaders\fragshaderlight.frag" />
     <None Include="Shaders\vertshader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
