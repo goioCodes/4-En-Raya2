@@ -12,8 +12,8 @@ const float MOVEMENTSPEED = 2.5f;
 
 void cameraInitialize(Camera* cam, const vec3 position)
 {
-    glm_vec3_copy(position, cam->position);
-    glm_vec3_copy(WORLDUP, cam->worldUp);
+    glm_vec3_copy((float*)position, cam->position);
+    glm_vec3_copy((float*)WORLDUP, cam->worldUp);
     cam->yaw = YAW;
     cam->pitch = PITCH;
     cam->movementSpeed = MOVEMENTSPEED;
