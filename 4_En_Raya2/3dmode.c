@@ -11,6 +11,7 @@
 
 #include "shaderutils.h"
 #include "camera.h"
+#include "connect4.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -39,8 +40,15 @@ float lastFrame = 0.f;
 
 vec3 lightPos = { 1.2f, 1.f, 2.f };
 
+bool threedmode = false;
+
 int main()
 {
+	if (!threedmode)
+	{
+		connect4Main();
+		return 0;
+	}
 	// Inicialització de GLFW
 	glfwInit();
 	// Configuració de GLFW

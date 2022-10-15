@@ -144,9 +144,11 @@
     <ClCompile Include="glad\glad.c" />
     <ClCompile Include="shaderutils.c" />
     <ClCompile Include="camera.c" />
+    <ClCompile Include="connect4.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
+    <ClInclude Include="connect4.h" />
     <ClInclude Include="shaderutils.h" />
   </ItemGroup>
   <ItemGroup>
