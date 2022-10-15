@@ -38,7 +38,7 @@ const vec3 initialCameraPos = { 0.f, 0.f, 3.f };
 float deltaTime = 0.f;
 float lastFrame = 0.f;
 
-vec3 lightPos = { 1.2f, 1.f, 2.f };
+vec3 lightDir = { -0.2f, -1.0f, -0.3f };
 
 bool threedmode = false;
 
@@ -281,15 +281,7 @@ int main()
 		glClearColor(0.1f, 0.1f, 0.1f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		lightPos[0] = sin(glfwGetTime()) * 2.0f;
-		lightPos[1] = sin(glfwGetTime() / 2.0f);
-		lightPos[2] = cos(glfwGetTime()) * 2.0f;
-
 		glUseProgram(shaderProgram);
-		setUniformVec3(shaderProgram, "objectColor", (vec3){ 1.0f, 0.5f, 0.31f });
-		setUniformVec3(shaderProgram, "lightColor", (vec3){ 1.0f, 1.0f, 1.0f });
-		setUniformVec3(shaderProgram, "lightPos", lightPos);
-
 		mat4 view = GLM_MAT4_IDENTITY_INIT;
 		cameraGetViewMatrix(&camera, view);
 		setUniformMat4(shaderProgram, "view", GL_FALSE, (float*)view);
@@ -300,6 +292,19 @@ int main()
 
 		mat4 model = GLM_MAT4_IDENTITY_INIT;
 		setUniformMat4(shaderProgram, "model", GL_FALSE, (float*)model);
+
+		setUniformVec3(shaderProgram, "material.ambient", (vec3){ 1.0f, 0.5f, 0.31f });
+		setUniformVec3(shaderProgram, "material.diffuse", (vec3) { 1.0f, 0.5f, 0.31f });
+		setUniformVec3(shaderProgram, "material.specular", (vec3) { 0.5f, 0.5f, 0.5f });
+		setUniformf(shaderProgram, "material.shininess", 32.f);
+
+		setUniformVec3(shaderProgram, "dirLight.ambient", (vec3) { 0.2f, 0.2f, 0.2f });
+		setUniformVec3(shaderProgram, "dirLight.diffuse", (vec3) { 0.5f, 0.5f, 0.5f });
+		setUniformVec3(shaderProgram, "dirLight.specular", (vec3) { 1.0f, 1.0f, 1.0f });
+		
+		vec3 lightViewDir;
+		glm_mat4_mulv3(view, lightDir, 0.0f, lightViewDir);
+		setUniformVec3(shaderProgram, "dirLight.direction", lightViewDir);
 
 		/*
 		glActiveTexture(GL_TEXTURE0);
@@ -315,7 +320,7 @@ int main()
 		setUniformMat4(lightCubeProgram, "view", GL_FALSE, (float*)view);
 		setUniformMat4(lightCubeProgram, "projection", GL_FALSE, (float*)projection);
 		glm_mat4_identity(model);
-		glm_translate(model, lightPos);
+		glm_translate(model, (vec3) { 0.7f, 0.2f, 2.0f });
 		glm_scale(model, (vec3){ .2f, .2f, .2f });
 		setUniformMat4(lightCubeProgram, "model", GL_FALSE, (float*)model);
 

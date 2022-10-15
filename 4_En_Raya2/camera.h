@@ -1,6 +1,6 @@
 #include <cglm/call.h>
 
-typedef struct camera {
+typedef struct {
     vec3 position;
     vec3 front;
     vec3 up;
@@ -14,7 +14,7 @@ typedef struct camera {
     float mouseSensitivity;
 } Camera;
 
-typedef enum camera_movement {
+typedef enum {
     FORWARD,
     BACKWARD,
     LEFT,
