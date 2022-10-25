@@ -30,7 +30,6 @@ unsigned int SCR_HEIGHT = SCR_HEIGHT_INIT;
 
 float lastX = SCR_WIDTH_INIT / 2.0f;
 float lastY = SCR_HEIGHT_INIT / 2.0f;
-bool firstMouse = true;
 
 Camera camera;
 const vec3 initialCameraPos = { 0.f, 0.f, 3.f };
