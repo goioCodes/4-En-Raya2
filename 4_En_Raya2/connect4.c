@@ -66,6 +66,48 @@ bool checkWin(Board* board, int row, int col)
 {
     // La funcio comprova si l'ultim moviment ha guanyat la partida. Nomes es comproven les 4 direccions (2 ortogonals, 2 diagonals)
     // al voltant de l'ultima fitxa colocada, i fins a 4 caselles en cada direccio (maxim de 8 caselles)
+
+    return checkWinDirection(board, row, col, (int[2]) { 1, 0 }) || checkWinDirection(board, row, col, (int[2]) { 0, 1 }) ||
+        checkWinDirection(board, row, col, (int[2]) { 1, 1 }) || checkWinDirection(board, row, col, (int[2]) { -1, 1 });
+}
+
+bool checkWinDirection(Board* board, int row, int col, int* direction)
+{
+    // direction es un vector de 2 components que indica en quina direccio ens desplaçarem per trobar 4 en linea
+    // direction pot ser (1,0), (0,1), (1,1), (-1,1), (1, -1) o (-1, -1)
+    // Recorden que la coordenada y es mesura desde el costat superior cap abaix.
+    Token token = board->m[row][col];
+
+    int verticalBackLimit = direction[1] == 1 ? row : direction[1] == 0 ? max(NUM_COLS, NUM_ROWS) : NUM_ROWS - row - 1;
+    int horizontalBackLimit = direction[0] == 1 ? col : direction[0] == 0 ? max(NUM_COLS, NUM_ROWS) : NUM_COLS - col - 1;
+    int backLimit = min(min(verticalBackLimit, horizontalBackLimit), 3);
+    int startRow = row - direction[0] * backLimit;
+    int startCol = col - direction[0] * backLimit;
+
+    int verticalFrontLimit = direction[1] == 1 ? NUM_ROWS - row - 1 : direction[1] == 0 ? max(NUM_COLS, NUM_ROWS) : row;
+    int horizontalFrontLimit = direction[0] == 1 ? NUM_COLS - col - 1 : direction[0] == 0 ? max(NUM_COLS, NUM_ROWS) : col;
+    int frontLimit = min(min(verticalFrontLimit, horizontalFrontLimit), 3);
+
+    int count = 0;
+    for (int k = 0; k <= backLimit + frontLimit; k++)
+    {
+        if ((startRow + direction[1] * k >= NUM_ROWS) || (startCol + direction[0] * k >= NUM_COLS))
+        {
+            printf("ERROR ACCEDIENDO FUERA DE ARRAY, POSICION [%d][%d]\n", startRow + direction[1] * k, startCol + direction[0] * k);
+        }
+        if (board->m[startRow + direction[1] * k][startCol + direction[0] * k] == token)
+        {
+            count += 1;
+        }
+        else
+        {
+            count = 0;
+        }
+        if (count >= 4)
+        {
+            return true;
+        }
+    }
     return false;
 }
 

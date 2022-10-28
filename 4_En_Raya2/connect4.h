@@ -5,10 +5,10 @@ typedef enum {
     EMPTY,
     TOKEN1,
     TOKEN2
-} Tokens;
+} Token;
 
 typedef struct {
-    Tokens m[NUM_ROWS][NUM_COLS];
+    Token m[NUM_ROWS][NUM_COLS];
 } Board;
 
 
@@ -20,3 +20,4 @@ int placeToken(Board* board, int user, int col);
 void getUserInput(int* var);
 bool boardIsFull(Board* board, int turn);
 bool checkWin(Board* board, int row, int col);
+bool checkWinDirection(Board* board, int row, int col, int* direction);
