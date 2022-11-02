@@ -1,8 +1,8 @@
-#include <cglm/call.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
 #include <glad/glad.h>
+#include <cglm/cglm.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 char* readShaderSource(const char* filepath)
 {
@@ -11,9 +11,12 @@ char* readShaderSource(const char* filepath)
     long length;
 
     // El compilador de MSVC obliga a utilitzar fopen_s, canviar a fopen en cas d'utilitzar un altre compilador
-    //FILE* sourceFile = fopen(filepath, "rb"); // Obrim en mode binari
+#ifdef _MSC_VER
     FILE* sourceFile;
     fopen_s(&sourceFile, filepath, "rb");
+#else
+    FILE* sourceFile = fopen(filepath, "rb"); // Obrim en mode binari
+#endif
     if (!sourceFile)
     {
         fprintf(stderr, "No s'ha pogut obrir l'arxiu amb cami:\n%s\n", filepath);

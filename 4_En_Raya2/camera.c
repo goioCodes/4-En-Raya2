@@ -1,6 +1,7 @@
-#include <cglm/call.h>
-#include <math.h>
 #include "camera.h"
+
+#include <cglm/cglm.h>
+#include <math.h>
 
 void updateCamVectors(Camera* cam);
 

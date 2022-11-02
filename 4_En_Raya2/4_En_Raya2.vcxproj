@@ -145,10 +145,13 @@
     <ClCompile Include="shaderutils.c" />
     <ClCompile Include="camera.c" />
     <ClCompile Include="connect4.c" />
+    <ClCompile Include="board.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
     <ClInclude Include="connect4.h" />
+    <ClInclude Include="board.h" />
+    <ClInclude Include="colors.h" />
     <ClInclude Include="shaderutils.h" />
   </ItemGroup>
   <ItemGroup>

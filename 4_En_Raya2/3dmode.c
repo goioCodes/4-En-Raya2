@@ -1,17 +1,20 @@
-#include <cglm/call.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <math.h>
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include "connect4.h"
+#include "camera.h"
+#include "shaderutils.h"
+
+#include <cglm/cglm.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
-#include "shaderutils.h"
-#include "camera.h"
-#include "connect4.h"
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);

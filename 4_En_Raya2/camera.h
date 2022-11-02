@@ -1,4 +1,4 @@
-#include <cglm/call.h>
+#include <cglm/cglm.h>
 
 typedef struct {
     vec3 position;
