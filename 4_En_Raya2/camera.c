@@ -5,8 +5,8 @@
 
 void updateCamVectors(Camera* cam);
 
-const float YAW = -90.f;
-const float PITCH = 0.f;
+const float PHI = -90.f;
+const float THETA = 0.f;
 const vec3 WORLDUP = { 0.f, 1.f, 0.f };
 const float SENSITIVITY = 0.1f;
 const float MOVEMENTSPEED = 2.5f;
@@ -15,8 +15,8 @@ void cameraInitialize(Camera* cam, const vec3 position)
 {
     glm_vec3_copy((float*)position, cam->position);
     glm_vec3_copy((float*)WORLDUP, cam->worldUp);
-    cam->yaw = YAW;
-    cam->pitch = PITCH;
+    cam->phi = PHI;
+    cam->theta = THETA;
     cam->movementSpeed = MOVEMENTSPEED;
     cam->mouseSensitivity = SENSITIVITY;
     updateCamVectors(cam);
@@ -24,9 +24,9 @@ void cameraInitialize(Camera* cam, const vec3 position)
 
 void updateCamVectors(Camera* cam)
 {
-    cam->front[0] = cosf(glm_rad(cam->yaw)) * cosf(glm_rad(cam->pitch));
-    cam->front[1] = sinf(glm_rad(cam->pitch));
-    cam->front[2] = sinf(glm_rad(cam->yaw)) * cosf(glm_rad(cam->pitch));
+    cam->front[0] = cosf(glm_rad(cam->phi)) * cosf(glm_rad(cam->theta));
+    cam->front[1] = sinf(glm_rad(cam->theta));
+    cam->front[2] = sinf(glm_rad(cam->phi)) * cosf(glm_rad(cam->theta));
 
     glm_vec3_crossn(cam->front, cam->worldUp, cam->right);
     glm_vec3_cross(cam->right, cam->front, cam->up);
@@ -38,16 +38,16 @@ void cameraProcessMouseMovement(Camera* cam, float xoffset, float yoffset)
     xoffset *= cam->mouseSensitivity;
     yoffset *= cam->mouseSensitivity;
     
-    cam->yaw = fmodf(cam->yaw + xoffset, 360.f);
-    cam->pitch += yoffset;
+    cam->phi = fmodf(cam->phi + xoffset, 360.f);
+    cam->theta += yoffset;
 
-    if (cam->pitch > 89.f)
+    if (cam->theta > 89.f)
     {
-        cam->pitch = 89.f;
+        cam->theta = 89.f;
     }
-    if (cam->pitch < -89.f)
+    if (cam->theta < -89.f)
     {
-        cam->pitch = -89.f;
+        cam->theta = -89.f;
     }
 
     updateCamVectors(cam);

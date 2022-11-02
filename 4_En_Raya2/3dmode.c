@@ -1,6 +1,8 @@
 #include "connect4.h"
 #include "camera.h"
 #include "shaderutils.h"
+#include "board.h"
+#include "boardModel.h"
 
 #include <cglm/cglm.h>
 
@@ -22,7 +24,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 const char vertexShaderPath[] = "shaders/vertshader.vert";
-const char fragmentShaderPath[] = "shaders/fragshader.frag";
+const char fragmentShaderPath[] = "shaders/board.frag";
 const char lightCubeFragShaderPath[] = "shaders/fragshaderlight.frag";
 
 #define SCR_WIDTH_INIT 800
@@ -35,14 +37,14 @@ float lastX = SCR_WIDTH_INIT / 2.0f;
 float lastY = SCR_HEIGHT_INIT / 2.0f;
 
 Camera camera;
-const vec3 initialCameraPos = { 0.f, 0.f, 3.f };
+const vec3 initialCameraPos = { 0.f, 1.f, 3.f };
 
 float deltaTime = 0.f;
 float lastFrame = 0.f;
 
 vec3 lightDir = { -0.2f, -1.0f, -0.3f };
 
-bool threedmode = false;
+bool threedmode = true;
 
 int main()
 {
@@ -51,6 +53,7 @@ int main()
 		connect4Main();
 		return 0;
 	}
+
 	// Inicialització de GLFW
 	glfwInit();
 	// Configuració de GLFW
@@ -85,7 +88,7 @@ int main()
 
 	unsigned int shaders[2];
 	// VERTEX SHADER
-	shaders[0] = loadShader(vertexShaderPath, GL_VERTEX_SHADER);
+	shaders[0] = loadShader(vertexShaderPath, GL_VERTEX_SHADER, 0, NULL, NULL);
 	if (shaders[0] == 0)
 	{
 		printf("Creacio del vertex shader fallida.\n");
@@ -93,7 +96,9 @@ int main()
 	}
 
 	//FRAGMENT SHADER
-	shaders[1] = loadShader(fragmentShaderPath, GL_FRAGMENT_SHADER);
+	char* names[] = { "NCENTERS" };
+	int vals[] = { NUM_COLS * NUM_ROWS };
+	shaders[1] = loadShader(fragmentShaderPath, GL_FRAGMENT_SHADER, 1, names, vals);
 	if (shaders[1] == 0)
 	{
 		printf("Creacio del fragment shader fallida.\n");
@@ -104,35 +109,15 @@ int main()
 	// Shader program
 	unsigned int shaderProgram = linkProgram(shaders, 2);
 
+	glDeleteShader(shaders[0]);
 	glDeleteShader(shaders[1]);
 
 	if (shaderProgram == 0)
 	{
 		printf("Error de link.\n");
-		glDeleteShader(shaders[0]);
 		return 0;
 	}
-
-	//FRAGMENT SHADER LIGHT
-	shaders[1] = loadShader(lightCubeFragShaderPath, GL_FRAGMENT_SHADER);
-	if (shaders[1] == 0)
-	{
-		printf("Creacio del fragment shader fallida.\n");
-		glDeleteShader(shaders[0]);
-		return 0;
-	}
-
-	unsigned int lightCubeProgram = linkProgram(shaders, 2);
-
-	glDeleteShader(shaders[0]);
-	glDeleteShader(shaders[1]);
-
-	if (lightCubeProgram == 0)
-	{
-		printf("Error de link.\n");
-		return 0;
-	}
-
+	/*
 	// Triangles
 	float vertices[] = {
 	-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
@@ -177,11 +162,14 @@ int main()
 	-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
 	-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
 	};
-
+	*/
 	//unsigned int indices[] = {  // note that we start from 0!
 	//	0, 1, 3,   // first triangle
 	//	1, 2, 3    // second triangle
 	//};
+
+	float vertices[54];
+	generateVertices(vertices);
 
 	// Creem el Vertex Array Object
 	// El VAO guardarà tota la configuració de vertex attributes que farem a continuació, i el EBO que vinculem
@@ -191,25 +179,30 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-	unsigned int VAO;
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
+	unsigned int VAO1, VAO2;
+	glGenVertexArrays(1, &VAO1);
+	glGenVertexArrays(1, &VAO2);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0); // Especifiquem com les dades del vertex buffer han de ser interpretades per la GPU
+	glBindVertexArray(VAO1);
+
+	// Posicions dels vertex
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0); // Especifiquem com les dades del vertex buffer han de ser interpretades per la GPU
 	glEnableVertexAttribArray(0); // Necessari, no activat per defecte
-	//glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	//glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	// Vectors normals a cada vertex. Nomes volem les normals positives
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 	
-	unsigned int lightVAO;
-	glGenVertexArrays(1, &lightVAO);
-	glBindVertexArray(lightVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0); // Especifiquem com les dades del vertex buffer han de ser interpretades per la GPU
+	glBindVertexArray(VAO2);
+
+	// Posicions dels vertex
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)0); // Especifiquem com les dades del vertex buffer han de ser interpretades per la GPU
 	glEnableVertexAttribArray(0);
+	// Vectors normals a cada vertex. Ara nomes agafem les normals negatives
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
 	
 
+	vec2 centers[NUM_ROWS][NUM_COLS];
+	getCenters(centers);
 	// Creem el Element Buffer Array
 	//unsigned int EBO;
 	//glGenBuffers(1, &EBO);
@@ -267,6 +260,7 @@ int main()
 	
 	cameraInitialize(&camera, initialCameraPos);
 	glfwSetCursorPos(window, lastX, lastY);
+
 	// Render loop
 	// +------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+
 	//[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]------+------[+]
@@ -280,9 +274,10 @@ int main()
 		glfwPollEvents();
 		processInput(window);
 
-		glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+		glClearColor(0.8f, 0.8f, 0.8f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		// PRIMERA CARA
 		glUseProgram(shaderProgram);
 		mat4 view = GLM_MAT4_IDENTITY_INIT;
 		cameraGetViewMatrix(&camera, view);
@@ -293,20 +288,43 @@ int main()
 		setUniformMat4(shaderProgram, "projection", GL_FALSE, (float*)projection);
 
 		mat4 model = GLM_MAT4_IDENTITY_INIT;
+		glm_translate(model, (vec3) { 0.f, 0.f, 0.05f });
+		glm_scale(model, (vec3) { 0.5f, 0.5f, 1.f });
 		setUniformMat4(shaderProgram, "model", GL_FALSE, (float*)model);
 
-		setUniformVec3(shaderProgram, "material.ambient", (vec3){ 1.0f, 0.5f, 0.31f });
-		setUniformVec3(shaderProgram, "material.diffuse", (vec3) { 1.0f, 0.5f, 0.31f });
+		setUniformVec3(shaderProgram, "material.ambient", (vec3){ 0.f, 0.6f, 1.f });
+		setUniformVec3(shaderProgram, "material.diffuse", (vec3) { 0.f, 0.6f, 1.f });
 		setUniformVec3(shaderProgram, "material.specular", (vec3) { 0.5f, 0.5f, 0.5f });
 		setUniformf(shaderProgram, "material.shininess", 32.f);
 
-		setUniformVec3(shaderProgram, "dirLight.ambient", (vec3) { 0.2f, 0.2f, 0.2f });
-		setUniformVec3(shaderProgram, "dirLight.diffuse", (vec3) { 0.5f, 0.5f, 0.5f });
+		setUniformVec3(shaderProgram, "dirLight.ambient", (vec3) { 0.4f, 0.4f, 0.4f });
+		setUniformVec3(shaderProgram, "dirLight.diffuse", (vec3) { 0.7f, 0.7f, 0.7f });
 		setUniformVec3(shaderProgram, "dirLight.specular", (vec3) { 1.0f, 1.0f, 1.0f });
 		
 		vec3 lightViewDir;
 		glm_mat4_mulv3(view, lightDir, 0.0f, lightViewDir);
 		setUniformVec3(shaderProgram, "dirLight.direction", lightViewDir);
+
+		int maxDigits = numDigits(NUM_COLS * NUM_ROWS);
+		char* uniformName = malloc((maxDigits + strlen("viewCenters[]") + 1) * sizeof(char));
+		if (!uniformName)
+		{
+			printf("Error de memoria.\n");
+			return;
+		}
+		vec3 viewCenter;
+		for (int i = 0; i < NUM_ROWS; i++)
+		{
+			for (int j = 0; j < NUM_COLS; j++)
+			{
+				sprintf(uniformName, "viewCenters[%d]", i*NUM_COLS + j);
+				glm_mat4_mulv3(model, (vec3) { centers[i][j][0], centers[i][j][1], 0.0f }, 1.f, viewCenter);
+				glm_mat4_mulv3(view, viewCenter, 1.f, viewCenter);
+				setUniformVec3(shaderProgram, uniformName, viewCenter);
+			}
+		}
+
+		setUniformf(shaderProgram, "radius", 0.1f);
 
 		/*
 		glActiveTexture(GL_TEXTURE0);
@@ -315,9 +333,33 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, texture2);
 		*/
 
-		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
+		glBindVertexArray(VAO1);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
+		// SEGONA CARA
+
+		glm_mat4_identity(model);
+		glm_translate(model, (vec3) { 0.f, 0.f, -0.05f });
+		glm_scale(model, (vec3) { 0.5f, 0.5f, 1.0f });
+		setUniformMat4(shaderProgram, "model", GL_FALSE, (float*)model);
+
+		for (int i = 0; i < NUM_ROWS; i++)
+		{
+			for (int j = 0; j < NUM_COLS; j++)
+			{
+				sprintf(uniformName, "viewCenters[%d]", i * NUM_COLS + j);
+				glm_mat4_mulv3(model, (vec3) { centers[i][j][0], centers[i][j][1], 0.0f }, 1.f, viewCenter);
+				glm_mat4_mulv3(view, viewCenter, 1.f, viewCenter);
+				setUniformVec3(shaderProgram, uniformName, viewCenter);
+			}
+		}
+
+		free(uniformName);
+
+		glBindVertexArray(VAO2);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		/*
 		glUseProgram(lightCubeProgram);
 		setUniformMat4(lightCubeProgram, "view", GL_FALSE, (float*)view);
 		setUniformMat4(lightCubeProgram, "projection", GL_FALSE, (float*)projection);
@@ -328,7 +370,7 @@ int main()
 
 		glBindVertexArray(lightVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-
+		*/
 
 		glfwSwapBuffers(window);
 	}

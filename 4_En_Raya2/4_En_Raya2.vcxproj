@@ -146,16 +146,19 @@
     <ClCompile Include="camera.c" />
     <ClCompile Include="connect4.c" />
     <ClCompile Include="board.c" />
+    <ClCompile Include="boardModel.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
     <ClInclude Include="connect4.h" />
     <ClInclude Include="board.h" />
     <ClInclude Include="colors.h" />
+    <ClInclude Include="boardModel.h" />
     <ClInclude Include="shaderutils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cglm-0.dll" />
+    <None Include="Shaders\board.frag" />
     <None Include="Shaders\fragshader.frag" />
     <None Include="Shaders\fragshaderlight.frag" />
     <None Include="Shaders\vertshader.vert" />
