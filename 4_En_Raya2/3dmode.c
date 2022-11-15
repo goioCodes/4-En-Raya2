@@ -3,6 +3,7 @@
 #include "shaderutils.h"
 #include "board.h"
 #include "boardModel.h"
+#include "cylinderModel.h"
 
 #include <cglm/cglm.h>
 
@@ -24,7 +25,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 const char vertexShaderPath[] = "shaders/vertshader.vert";
-const char fragmentShaderPath[] = "shaders/board.frag";
+const char boardFragmentShaderPath[] = "shaders/board.frag";
+const char fragmentShaderPath[] = "shaders/fragshader.frag";
 const char lightCubeFragShaderPath[] = "shaders/fragshaderlight.frag";
 
 #define SCR_WIDTH_INIT 800
@@ -95,10 +97,10 @@ int main()
 		return 0;
 	}
 
-	//FRAGMENT SHADER
+	//FRAGMENT SHADER BOARD
 	char* names[] = { "NCENTERS" };
 	int vals[] = { NUM_COLS * NUM_ROWS };
-	shaders[1] = loadShader(fragmentShaderPath, GL_FRAGMENT_SHADER, 1, names, vals);
+	shaders[1] = loadShader(boardFragmentShaderPath, GL_FRAGMENT_SHADER, 1, names, vals);
 	if (shaders[1] == 0)
 	{
 		printf("Creacio del fragment shader fallida.\n");
@@ -106,7 +108,28 @@ int main()
 		return 0;
 	}
 
-	// Shader program
+	// Shader program board
+	unsigned int shaderProgramBoard = linkProgram(shaders, 2);
+
+	glDeleteShader(shaders[1]);
+
+	if (shaderProgramBoard == 0)
+	{
+		printf("Error de link.\n");
+		glDeleteShader(shaders[0]);
+		return 0;
+	}
+
+	//FRAGMENT SHADER GENERAL
+	shaders[1] = loadShader(fragmentShaderPath, GL_FRAGMENT_SHADER, 0, NULL, NULL);
+	if (shaders[1] == 0)
+	{
+		printf("Creacio del fragment shader fallida.\n");
+		glDeleteShader(shaders[0]);
+		glDeleteProgram(shaderProgramBoard);
+		return 0;
+	}
+
 	unsigned int shaderProgram = linkProgram(shaders, 2);
 
 	glDeleteShader(shaders[0]);
@@ -115,8 +138,10 @@ int main()
 	if (shaderProgram == 0)
 	{
 		printf("Error de link.\n");
+		glDeleteProgram(shaderProgramBoard);
 		return 0;
 	}
+
 	/*
 	// Triangles
 	float vertices[] = {
@@ -200,6 +225,12 @@ int main()
 	// Vectors normals a cada vertex. Ara nomes agafem les normals negatives
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(float), (void*)(6 * sizeof(float)));
 	
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+	Cylinder* cylinder = generateCylinder(0.1f, 0.1f, 10);
+
 
 	vec2 centers[NUM_ROWS][NUM_COLS];
 	getCenters(centers);
@@ -278,32 +309,32 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// PRIMERA CARA
-		glUseProgram(shaderProgram);
+		glUseProgram(shaderProgramBoard);
 		mat4 view = GLM_MAT4_IDENTITY_INIT;
 		cameraGetViewMatrix(&camera, view);
-		setUniformMat4(shaderProgram, "view", GL_FALSE, (float*)view);
+		setUniformMat4(shaderProgramBoard, "view", GL_FALSE, (float*)view);
 
 		mat4 projection = GLM_MAT4_ZERO_INIT;
 		glm_perspective(glm_rad(60.f), (float)SCR_WIDTH / (float)SCR_HEIGHT, .1f, 100.f, projection);
-		setUniformMat4(shaderProgram, "projection", GL_FALSE, (float*)projection);
+		setUniformMat4(shaderProgramBoard, "projection", GL_FALSE, (float*)projection);
 
 		mat4 model = GLM_MAT4_IDENTITY_INIT;
 		glm_translate(model, (vec3) { 0.f, 0.f, 0.05f });
 		glm_scale(model, (vec3) { 0.5f, 0.5f, 1.f });
-		setUniformMat4(shaderProgram, "model", GL_FALSE, (float*)model);
+		setUniformMat4(shaderProgramBoard, "model", GL_FALSE, (float*)model);
 
-		setUniformVec3(shaderProgram, "material.ambient", (vec3){ 0.f, 0.6f, 1.f });
-		setUniformVec3(shaderProgram, "material.diffuse", (vec3) { 0.f, 0.6f, 1.f });
-		setUniformVec3(shaderProgram, "material.specular", (vec3) { 0.5f, 0.5f, 0.5f });
-		setUniformf(shaderProgram, "material.shininess", 32.f);
+		setUniformVec3(shaderProgramBoard, "material.ambient", (vec3){ 0.f, 0.6f, 1.f });
+		setUniformVec3(shaderProgramBoard, "material.diffuse", (vec3) { 0.f, 0.6f, 1.f });
+		setUniformVec3(shaderProgramBoard, "material.specular", (vec3) { 0.5f, 0.5f, 0.5f });
+		setUniformf(shaderProgramBoard, "material.shininess", 32.f);
 
-		setUniformVec3(shaderProgram, "dirLight.ambient", (vec3) { 0.4f, 0.4f, 0.4f });
-		setUniformVec3(shaderProgram, "dirLight.diffuse", (vec3) { 0.7f, 0.7f, 0.7f });
-		setUniformVec3(shaderProgram, "dirLight.specular", (vec3) { 1.0f, 1.0f, 1.0f });
+		setUniformVec3(shaderProgramBoard, "dirLight.ambient", (vec3) { 0.4f, 0.4f, 0.4f });
+		setUniformVec3(shaderProgramBoard, "dirLight.diffuse", (vec3) { 0.7f, 0.7f, 0.7f });
+		setUniformVec3(shaderProgramBoard, "dirLight.specular", (vec3) { 1.0f, 1.0f, 1.0f });
 		
 		vec3 lightViewDir;
 		glm_mat4_mulv3(view, lightDir, 0.0f, lightViewDir);
-		setUniformVec3(shaderProgram, "dirLight.direction", lightViewDir);
+		setUniformVec3(shaderProgramBoard, "dirLight.direction", lightViewDir);
 
 		int maxDigits = numDigits(NUM_COLS * NUM_ROWS);
 		char* uniformName = malloc((maxDigits + strlen("viewCenters[]") + 1) * sizeof(char));
@@ -320,11 +351,11 @@ int main()
 				sprintf(uniformName, "viewCenters[%d]", i*NUM_COLS + j);
 				glm_mat4_mulv3(model, (vec3) { centers[i][j][0], centers[i][j][1], 0.0f }, 1.f, viewCenter);
 				glm_mat4_mulv3(view, viewCenter, 1.f, viewCenter);
-				setUniformVec3(shaderProgram, uniformName, viewCenter);
+				setUniformVec3(shaderProgramBoard, uniformName, viewCenter);
 			}
 		}
 
-		setUniformf(shaderProgram, "radius", 0.1f);
+		setUniformf(shaderProgramBoard, "radius", 0.1f);
 
 		/*
 		glActiveTexture(GL_TEXTURE0);
@@ -341,7 +372,7 @@ int main()
 		glm_mat4_identity(model);
 		glm_translate(model, (vec3) { 0.f, 0.f, -0.05f });
 		glm_scale(model, (vec3) { 0.5f, 0.5f, 1.0f });
-		setUniformMat4(shaderProgram, "model", GL_FALSE, (float*)model);
+		setUniformMat4(shaderProgramBoard, "model", GL_FALSE, (float*)model);
 
 		for (int i = 0; i < NUM_ROWS; i++)
 		{
@@ -350,7 +381,7 @@ int main()
 				sprintf(uniformName, "viewCenters[%d]", i * NUM_COLS + j);
 				glm_mat4_mulv3(model, (vec3) { centers[i][j][0], centers[i][j][1], 0.0f }, 1.f, viewCenter);
 				glm_mat4_mulv3(view, viewCenter, 1.f, viewCenter);
-				setUniformVec3(shaderProgram, uniformName, viewCenter);
+				setUniformVec3(shaderProgramBoard, uniformName, viewCenter);
 			}
 		}
 
@@ -358,6 +389,11 @@ int main()
 
 		glBindVertexArray(VAO2);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
+		glUseProgram(shaderProgram);
+
+		drawCylinder(cylinder);
 
 		/*
 		glUseProgram(lightCubeProgram);

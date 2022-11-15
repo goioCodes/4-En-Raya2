@@ -36,7 +36,7 @@
     <ClCompile Include="boardModel.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="cylinder.c">
+    <ClCompile Include="cylinderModel.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>
@@ -59,7 +59,7 @@
     <ClInclude Include="boardModel.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="cylinder.h">
+    <ClInclude Include="cylinderModel.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>

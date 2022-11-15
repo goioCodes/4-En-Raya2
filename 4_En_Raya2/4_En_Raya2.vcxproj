@@ -147,7 +147,7 @@
     <ClCompile Include="connect4.c" />
     <ClCompile Include="board.c" />
     <ClCompile Include="boardModel.c" />
-    <ClCompile Include="cylinder.c" />
+    <ClCompile Include="cylinderModel.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -155,7 +155,7 @@
     <ClInclude Include="board.h" />
     <ClInclude Include="colors.h" />
     <ClInclude Include="boardModel.h" />
-    <ClInclude Include="cylinder.h" />
+    <ClInclude Include="cylinderModel.h" />
     <ClInclude Include="shaderutils.h" />
   </ItemGroup>
   <ItemGroup>
