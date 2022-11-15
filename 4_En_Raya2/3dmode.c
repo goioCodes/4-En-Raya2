@@ -229,7 +229,7 @@ int main()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
-	Cylinder* cylinder = generateCylinder(0.1f, 0.1f, 10);
+	Cylinder* cylinder = generateCylinder(0.1f, 0.09f, 10);
 
 
 	vec2 centers[NUM_ROWS][NUM_COLS];
@@ -392,7 +392,21 @@ int main()
 
 
 		glUseProgram(shaderProgram);
+		glm_mat4_identity(model);
+		setUniformMat4(shaderProgram, "model", GL_FALSE, (float*)model);
+		setUniformMat4(shaderProgram, "projection", GL_FALSE, (float*)projection);
+		setUniformMat4(shaderProgram, "view", GL_FALSE, (float*)view);
 
+		setUniformVec3(shaderProgram, "material.ambient", (vec3) { 1.f, 0.0f, 0.f });
+		setUniformVec3(shaderProgram, "material.diffuse", (vec3) { 1.f, 0.0f, 0.f });
+		setUniformVec3(shaderProgram, "material.specular", (vec3) { 0.5f, 0.5f, 0.5f });
+		setUniformf(shaderProgram, "material.shininess", 32.f);
+
+		setUniformVec3(shaderProgram, "dirLight.ambient", (vec3) { 0.4f, 0.4f, 0.4f });
+		setUniformVec3(shaderProgram, "dirLight.diffuse", (vec3) { 0.7f, 0.7f, 0.7f });
+		setUniformVec3(shaderProgram, "dirLight.specular", (vec3) { 1.0f, 1.0f, 1.0f });
+
+		setUniformVec3(shaderProgram, "dirLight.direction", lightViewDir);
 		drawCylinder(cylinder);
 
 		/*

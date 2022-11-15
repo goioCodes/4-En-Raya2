@@ -69,7 +69,7 @@ Cylinder* generateCylinder(float radius, float height, int sectors)
     // Vertex central base
     cyl->verticesBase[0] = 0;
     cyl->verticesBase[1] = 0;
-    cyl->verticesBase[2] = 0;
+    cyl->verticesBase[2] = -height/2;
 
     cyl->verticesBase[3] = 0;
     cyl->verticesBase[4] = 0;
@@ -78,52 +78,52 @@ Cylinder* generateCylinder(float radius, float height, int sectors)
     // Vertex central top
     cyl->verticesTop[0] = 0;
     cyl->verticesTop[1] = 0;
-    cyl->verticesTop[2] = height;
+    cyl->verticesTop[2] = height/2;
 
     cyl->verticesTop[3] = 0;
     cyl->verticesTop[4] = 0;
     cyl->verticesTop[5] = 1;
-    for (int i = 1; i <= sectors + 1; i++)
+    for (int i = 0; i <= sectors; i++)
     {
-        angle = angleStep * (i-1);
+        angle = angleStep * i;
 
         x = radius * cosf(angle);
         y = radius * sinf(angle);
 
         // Vertex base
-        cyl->verticesBase[i * 6] = x;
-        cyl->verticesBase[i * 6 + 1] = y;
-        cyl->verticesBase[i * 6 + 2] = 0;
+        cyl->verticesBase[(i + 1) * 6] = x;
+        cyl->verticesBase[(i + 1) * 6 + 1] = y;
+        cyl->verticesBase[(i + 1) * 6 + 2] = -height/2;
         // Normals base
-        cyl->verticesBase[i * 6 + 3] = 0;
-        cyl->verticesBase[i * 6 + 4] = 0;
-        cyl->verticesBase[i * 6 + 5] = -1;
+        cyl->verticesBase[(i + 1) * 6 + 3] = 0;
+        cyl->verticesBase[(i + 1) * 6 + 4] = 0;
+        cyl->verticesBase[(i + 1) * 6 + 5] = -1;
 
         // Vertex top
-        cyl->verticesTop[i * 6] = x;
-        cyl->verticesTop[i * 6 + 1] = y;
-        cyl->verticesTop[i * 6 + 2] = height;
+        cyl->verticesTop[(i + 1) * 6] = x;
+        cyl->verticesTop[(i + 1) * 6 + 1] = y;
+        cyl->verticesTop[(i + 1) * 6 + 2] = height/2;
         // Normals top
-        cyl->verticesTop[i * 6 + 3] = 0;
-        cyl->verticesTop[i * 6 + 4] = 0;
-        cyl->verticesTop[i * 6 + 5] = 1;
+        cyl->verticesTop[(i + 1) * 6 + 3] = 0;
+        cyl->verticesTop[(i + 1) * 6 + 4] = 0;
+        cyl->verticesTop[(i + 1) * 6 + 5] = 1;
 
         // Vertex side 1 (base)
         cyl->verticesSide[i * 12] = x;
         cyl->verticesSide[i * 12 + 1] = y;
-        cyl->verticesSide[i * 12 + 2] = 0;
+        cyl->verticesSide[i * 12 + 2] = -height/2;
         // Normals side 1
         cyl->verticesSide[i * 12 + 3] = x;
         cyl->verticesSide[i * 12 + 4] = y;
         cyl->verticesSide[i * 12 + 5] = 0;
         // Vertex side 2 (top)
-        cyl->verticesSide[i * 12] = x;
-        cyl->verticesSide[i * 12 + 1] = y;
-        cyl->verticesSide[i * 12 + 2] = height;
+        cyl->verticesSide[i * 12 + 6] = x;
+        cyl->verticesSide[i * 12 + 7] = y;
+        cyl->verticesSide[i * 12 + 8] = height/2;
         // Normals side 2
-        cyl->verticesSide[i * 12 + 3] = x;
-        cyl->verticesSide[i * 12 + 4] = y;
-        cyl->verticesSide[i * 12 + 5] = 0;
+        cyl->verticesSide[i * 12 + 9] = x;
+        cyl->verticesSide[i * 12 + 10] = y;
+        cyl->verticesSide[i * 12 + 11] = 0;
     }
 
     glGenBuffers(1, &(cyl->VBO));
@@ -149,8 +149,8 @@ Cylinder* generateCylinder(float radius, float height, int sectors)
 void drawCylinder(Cylinder* cylinder)
 {
     glBindVertexArray(cylinder->VAO);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, cylinder->numVertBase * 6 * sizeof(float));
-    glDrawArrays(GL_TRIANGLE_FAN, cylinder->numVertBase * 6 * sizeof(float), cylinder->numVertBase * 6 * sizeof(float));
-    glDrawArrays(GL_TRIANGLE_STRIP, 2 * (cylinder->numVertBase * 6 * sizeof(float)), cylinder->numVertSide * 6 * sizeof(float));
+    glDrawArrays(GL_TRIANGLE_FAN, 0, cylinder->numVertBase);
+    glDrawArrays(GL_TRIANGLE_FAN, cylinder->numVertBase, cylinder->numVertBase);
+    glDrawArrays(GL_TRIANGLE_STRIP, 2 * cylinder->numVertBase, cylinder->numVertSide);
     glBindVertexArray(0);
 }
