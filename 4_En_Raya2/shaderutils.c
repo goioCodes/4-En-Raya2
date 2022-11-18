@@ -1,3 +1,5 @@
+#include "shaderutils.h"
+
 #include <glad/glad.h>
 #include <cglm/cglm.h>
 #include <stdbool.h>
@@ -72,7 +74,7 @@ int numDigits(int n) {
     return 10;
 }
 
-char* strreplace(char* orig, char* rep, char* with)
+char* strreplace(char* orig, const char* rep, const char* with)
 {
     // Reemplaça nomes la primera ocurrencia de rep en orig, amb with
     char* result; // the return string
@@ -245,6 +247,11 @@ unsigned int linkProgram(unsigned int* shaders, int n)
     return shaderProgram;
 }
 
+void setUniformBool(unsigned int program, const char* name, bool value)
+{
+    glUniform1i(glGetUniformLocation(program, name), value);
+}
+
 void setUniformi(unsigned int program, const char* name, int value)
 {
     glUniform1i(glGetUniformLocation(program, name), value);
@@ -255,9 +262,9 @@ void setUniformf(unsigned int program, const char* name, float value)
     glUniform1f(glGetUniformLocation(program, name), value);
 }
 
-void setUniformMat4(unsigned int program, const char* name, bool transpose, float* mat)
+void setUniformMat4(unsigned int program, const char* name, bool transpose, mat4 mat)
 {
-    glUniformMatrix4fv(glGetUniformLocation(program, name), 1, transpose, mat);
+    glUniformMatrix4fv(glGetUniformLocation(program, name), 1, transpose, (float*)mat);
 }
 
 void setUniformVec3(unsigned int program, const char* name, vec3 vec)
@@ -268,4 +275,58 @@ void setUniformVec3(unsigned int program, const char* name, vec3 vec)
 void setUniformVec2(unsigned int program, const char* name, vec2 vec)
 {
     glUniform2f(glGetUniformLocation(program, name), vec[0], vec[1]);
+}
+
+void setUniformMaterial(unsigned int program, const char* name, Material* mat)
+{
+    char diffuse[] = "name.diffuse";
+    char specular[] = "name.specular";
+    char shininess[] = "name.shininess";
+
+    char* rdiffuse = strreplace(diffuse, "name", name);
+    char* rspecular = strreplace(specular, "name", name);
+    char* rshininess = strreplace(shininess, "name", name);
+
+    if (!rdiffuse || !rspecular || !rshininess)
+    {
+        printf("Error de memoria.");
+        return;
+    }
+
+    setUniformVec3(program, rdiffuse, mat->diffuse);
+    setUniformVec3(program, rspecular, mat->specular);
+    setUniformf(program, rshininess, mat->shininess);
+
+    free(rdiffuse);
+    free(rspecular);
+    free(rshininess);
+}
+
+void setUniformDirLight(unsigned int program, const char* name, DirLight* dirLight)
+{
+    char direction[] = "name.direction";
+    char ambient[] = "name.ambient";
+    char diffuse[] = "name.diffuse";
+    char specular[] = "name.specular";
+
+    char* rdirection = strreplace(direction, "name", name);
+    char* rambient = strreplace(ambient, "name", name);
+    char* rdiffuse = strreplace(diffuse, "name", name);
+    char* rspecular = strreplace(specular, "name", name);
+
+    if (!rambient || !rdiffuse || !rspecular || !rdirection)
+    {
+        printf("Error de memoria.");
+        return;
+    }
+
+    setUniformVec3(program, rdirection, dirLight->direction);
+    setUniformVec3(program, rambient, dirLight->ambient);
+    setUniformVec3(program, rdiffuse, dirLight->diffuse);
+    setUniformVec3(program, rspecular, dirLight->specular);
+
+    free(rdirection);
+    free(rambient);
+    free(rdiffuse);
+    free(rspecular);
 }

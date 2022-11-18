@@ -3,11 +3,11 @@
 
 in vec3 Normal;
 in vec3 FragPos;
+in vec2 TexCoord;
 
 out vec4 FragColor;
 
 struct Material {
-    vec3 ambient;
     vec3 diffuse;
     vec3 specular;
     float shininess;
@@ -25,17 +25,17 @@ struct DirLight {
 
 uniform DirLight dirLight;
 
-uniform vec3 viewCenters[NCENTERS];
-uniform float radius;
+uniform sampler2D distanceField;
+uniform float distThreshold;
+uniform bool checkRadius;
 
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
 
 void main()
 {
-    for (int i = 0; i < NCENTERS; i++)
+    if (checkRadius)
     {
-        vec3 dist = viewCenters[i] - FragPos;
-        if (dot(dist, dist) <= radius*radius)
+        if (texture(distanceField, TexCoord).r < distThreshold)
         {
             discard;
         }

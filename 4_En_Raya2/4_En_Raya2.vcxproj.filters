@@ -39,6 +39,9 @@
     <ClCompile Include="cylinderModel.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="textRenderer.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderutils.h">
@@ -62,6 +65,9 @@
     <ClInclude Include="cylinderModel.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="textRenderer.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\fragshader.frag">
@@ -70,13 +76,13 @@
     <None Include="Shaders\vertshader.vert">
       <Filter>Archivos de recursos</Filter>
     </None>
-    <None Include="cglm-0.dll">
-      <Filter>Archivos de recursos</Filter>
-    </None>
-    <None Include="Shaders\fragshaderlight.frag">
-      <Filter>Archivos de recursos</Filter>
-    </None>
     <None Include="Shaders\board.frag">
+      <Filter>Archivos de recursos</Filter>
+    </None>
+    <None Include="Shaders\textshader.frag">
+      <Filter>Archivos de recursos</Filter>
+    </None>
+    <None Include="Shaders\textshader.vert">
       <Filter>Archivos de recursos</Filter>
     </None>
   </ItemGroup>

@@ -76,8 +76,8 @@
     <SourcePath>$(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\Users\Goyo\source\librerias externas\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Goyo\source\librerias externas\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\goiog\source\librerias externas\include;C:\Users\Goyo\source\librerias externas\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\Goyo\source\librerias externas\lib;C:\Users\goiog\source\librerias externas\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -115,11 +115,12 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard_C>Default</LanguageStandard_C>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;cglm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;cglm.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -136,7 +137,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;cglm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;cglm.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -148,6 +149,7 @@
     <ClCompile Include="board.c" />
     <ClCompile Include="boardModel.c" />
     <ClCompile Include="cylinderModel.c" />
+    <ClCompile Include="textRenderer.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
@@ -156,13 +158,14 @@
     <ClInclude Include="colors.h" />
     <ClInclude Include="boardModel.h" />
     <ClInclude Include="cylinderModel.h" />
+    <ClInclude Include="textRenderer.h" />
     <ClInclude Include="shaderutils.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cglm-0.dll" />
     <None Include="Shaders\board.frag" />
     <None Include="Shaders\fragshader.frag" />
-    <None Include="Shaders\fragshaderlight.frag" />
+    <None Include="Shaders\textshader.frag" />
+    <None Include="Shaders\textshader.vert" />
     <None Include="Shaders\vertshader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
