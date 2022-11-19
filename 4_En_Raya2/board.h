@@ -2,8 +2,8 @@
 #define __BOARD_H_
 #include <stdbool.h>
 
-#define NUM_ROWS 10
-#define NUM_COLS 20
+#define NUM_ROWS 6
+#define NUM_COLS 7
 
 typedef enum {
     EMPTY,

@@ -18,10 +18,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 const char vertexShaderPath[] = "Shaders/vertshader.vert";
 const char boardFragmentShaderPath[] = "Shaders/board.frag";
@@ -34,11 +30,21 @@ const char textFragmentShaderPath[] = "Shaders/textshader.frag";
 
 const vec3 initialCameraPos = { 0.f, 1.f, 3.f };
 
+const vec3 textParams = { 25.f, 25.f, 1.f };
+
 #define lightDir (vec3){ -0.2f, -1.0f, -0.3f }
 #define boardScale (vec3){ 0.5f, 0.5f, 0.5f }
 
+const float tokenSpawnHeight = 6;
+
+const float gravity = 0.2;
+
 typedef struct {
-	int cursorPos;
+	int cursorInd;
+	float cursorPos;
+	vec2 tokenPositions[NUM_ROWS][NUM_COLS];
+
+	bool gameFinished;
 
 	// Internal game
 	Board board;
@@ -49,6 +55,7 @@ typedef struct {
 typedef struct {
 	Camera camera;
 	TextRenderer textRender;
+	char textBox[100];
 
 	// Window size
 	unsigned int scr_width;
@@ -66,6 +73,11 @@ typedef struct {
 	GameState gameState;
 } Resources;
 
+void processPhysics(GameState* gs, float centers[][NUM_COLS][2], float fixedDeltaTime);
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void processInput(GLFWwindow* window);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 Material boardMat = {
 		.diffuse = {0.f, 0.6f, 1.f},
@@ -97,6 +109,7 @@ DirLight dirLight = {
 	.specular = { 1.0f, 1.0f, 1.0f },
 };
 
+const int fixedPhysicsStepsPS = 60;
 
 bool threedmode = true;
 
@@ -139,6 +152,8 @@ int main()
 
 	//--------GLOBAL RESOURCES---------
 	Resources resources = {
+		.textBox = "Torn del jugador 1.",
+
 		.scr_width = SCR_WIDTH_INIT,
 		.scr_height = SCR_HEIGHT_INIT,
 
@@ -149,7 +164,7 @@ int main()
 		.deltaTime = 0.0f,
 
 		.gameState = {	
-						.cursorPos = NUM_COLS / 2,
+						.cursorInd = NUM_COLS / 2,
 						.currentPlayer = PLAYER1,
 						.turnCount = 1
 					 }
@@ -284,8 +299,10 @@ int main()
 		return -1;
 	}
 
-	int cursorPosition = NUM_COLS/2;
+	resources.gameState.cursorPos = boardM->centers[0][resources.gameState.cursorInd][0];
 
+	float physicsDeltaTime = 1.0f / fixedPhysicsStepsPS;
+	float lastPhysicsTime = 0.0f;
 	cameraInitialize(&resources.camera, initialCameraPos);
 	glfwSetCursorPos(window, resources.lastX, resources.lastY);
 
@@ -298,9 +315,14 @@ int main()
 		float currentFrame = (float)glfwGetTime();
 		resources.deltaTime = currentFrame - resources.lastFrame;
 		resources.lastFrame = currentFrame;
-		
+
 		glfwPollEvents();
 		processInput(window);
+
+		if (currentFrame - lastPhysicsTime >= physicsDeltaTime)
+		{
+			processPhysics(&resources.gameState, boardM->centers, physicsDeltaTime);
+		}
 
 		glClearColor(0.8f, 0.8f, 0.8f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -359,7 +381,7 @@ int main()
 				glm_scale_make(model, boardScale);
 				glm_translate(model, (vec3) {
 					boardM->centers[i][j][0],
-					boardM->centers[i][j][1],
+					resources.gameState.tokenPositions[i][j][0],
 					0.f
 				});
 
@@ -368,10 +390,10 @@ int main()
 			}
 		}
 
-
+		
 		// DIBUIXANT: CURSOR
 		glm_scale_make(model, boardScale);
-		glm_translate(model, (vec3) { boardM->centers[0][resources.gameState.cursorPos][0], boardM->centers[0][0][1] + boardM->colrowSize, 0 });
+		glm_translate(model, (vec3) { resources.gameState.cursorPos, boardM->centers[0][0][1] + boardM->colrowSize, 0 });
 		glm_rotate_z(model, -(float)M_PI_2, model);
 		glm_scale(model, (vec3) { 0.7f, 1.f, 1.f });
 
@@ -381,7 +403,7 @@ int main()
 		// DIBUIXANT: TEXT UI
 		glDisable(GL_DEPTH_TEST);
 		glUseProgram(shaderProgramText);
-		renderTextUI(shaderProgramText, "Epico texto guau", 25.f, 25.f, 1.f, (vec3) { 0.f, 0.f, 0.f }, & resources.textRender);
+		renderTextUI(shaderProgramText, resources.textBox, textParams[0], textParams[1], textParams[2], (vec3) { 0.f, 0.f, 0.f }, &resources.textRender);
 
 		glEnable(GL_DEPTH_TEST);
 		glfwSwapBuffers(window);
@@ -389,6 +411,67 @@ int main()
 
 	glfwTerminate();
 	return 0;
+}
+
+void processPhysics(GameState* gs,  float centers[][NUM_COLS][2], float fixedDeltaTime)
+{
+	gs->cursorPos = glm_lerp(gs->cursorPos, centers[0][gs->cursorInd][0], 3.f * fixedDeltaTime);
+	
+	Token ptoken;
+	for (int i = 0; i < NUM_ROWS; i++)
+	{
+		for (int j = 0; j < NUM_COLS; j++)
+		{
+			ptoken = gs->board.m[i][j];
+			if (ptoken == EMPTY)
+			{
+				continue;
+			}
+
+			gs->tokenPositions[i][j][0] += gs->tokenPositions[i][j][1] * fixedDeltaTime;
+			gs->tokenPositions[i][j][1] -= gravity * fixedDeltaTime;
+			if (gs->tokenPositions[i][j][0] < centers[i][0][1])
+			{
+				gs->tokenPositions[i][j][1] = fabsf(gs->tokenPositions[i][j][1]) * 0.35f;
+				gs->tokenPositions[i][j][0] = centers[i][0][1];
+			}
+		}
+	}
+}
+
+
+void nextTurn(Resources* resources, int row, int col)
+{
+	if (checkWin(&resources->gameState.board, row, col))
+	{
+		sprintf(resources->textBox, "El jugador %d ha guanyat!", resources->gameState.currentPlayer);
+		resources->gameState.gameFinished = true;
+		return;
+	}
+	if (boardIsFull(&resources->gameState.board, resources->gameState.turnCount))
+	{
+		sprintf(resources->textBox, "Empat! Tothom perd.");
+		resources->gameState.gameFinished = true;
+		return;
+	}
+	resources->gameState.turnCount++;
+	resources->gameState.currentPlayer = resources->gameState.currentPlayer == PLAYER1 ? PLAYER2 : PLAYER1;
+	sprintf(resources->textBox, "Torn del jugador %d.", resources->gameState.currentPlayer);
+}
+
+void placeToken3D(Resources* resources, int col)
+{
+	int row = placeToken(&resources->gameState.board, resources->gameState.currentPlayer, col);
+	if (row != -1)
+	{
+		resources->gameState.tokenPositions[row][col][0] = tokenSpawnHeight;
+		nextTurn(resources, row, col);
+		return;
+	}
+	else
+	{
+		printf("Columna plena!\n");
+	}
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -403,31 +486,22 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	Resources* resources = glfwGetWindowUserPointer(window);
 	if (key == GLFW_KEY_A && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		if (resources->gameState.cursorPos > 0)
+		if (resources->gameState.cursorInd > 0)
 		{
-			resources->gameState.cursorPos--;
+			resources->gameState.cursorInd--;
 		}
 	}
 	if (key == GLFW_KEY_D && (action == GLFW_PRESS || action == GLFW_REPEAT))
 	{
-		if (resources->gameState.cursorPos < NUM_COLS-1)
+		if (resources->gameState.cursorInd < NUM_COLS-1)
 		{
-			resources->gameState.cursorPos++;
+			resources->gameState.cursorInd++;
 		}
 	}
 
-	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && !resources->gameState.gameFinished)
 	{
-		int row = placeToken(&resources->gameState.board, resources->gameState.currentPlayer, resources->gameState.cursorPos);
-		if (row != -1)
-		{
-			resources->gameState.currentPlayer = resources->gameState.currentPlayer == PLAYER1 ? PLAYER2 : PLAYER1;
-			return;
-		}
-		else
-		{
-			printf("Columna plena!\n");
-		}
+		placeToken3D(resources, resources->gameState.cursorInd);
 	}
 }
 
