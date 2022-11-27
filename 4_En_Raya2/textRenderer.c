@@ -27,6 +27,8 @@ void initTextRenderer(TextRenderer* ren, float scr_width, float scr_height)
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
 
+	FT_GlyphSlot slot = face->glyph;
+
 	for (unsigned char c = 32; c < 128; c++)
 	{
 		// load character glyph 
@@ -35,6 +37,9 @@ void initTextRenderer(TextRenderer* ren, float scr_width, float scr_height)
 			printf("ERROR::FREETYTPE: Failed to load Glyph");
 			continue;
 		}
+
+		FT_Render_Glyph(slot, FT_RENDER_MODE_SDF);
+
 		// generate texture
 		unsigned int texture;
 		glGenTextures(1, &texture);
@@ -98,10 +103,12 @@ void textUpdateScreenSize(TextRenderer* ren, float scr_width, float scr_height)
 	glm_ortho(0.0f, scr_width, 0.0f, scr_height, -2.f, 2.f, ren->projectionOrtho);
 }
 
-void renderTextUI(unsigned int program, const char* text, float x, float y, float scale, vec3 color, TextRenderer* ren)
+void renderTextUI(unsigned int program, const char* text, float x, float y, float scale, vec3 color, vec3 outline, TextRenderer* ren)
 {
+	glDepthMask(GL_FALSE);
     // activate corresponding render state
     setUniformVec3(program, "textColor", color);
+	setUniformVec3(program, "outlineColor", outline);
     setUniformMat4(program, "projection", false, ren->projectionOrtho);
 	mat4 view = GLM_MAT4_IDENTITY_INIT;
 	setUniformMat4(program, "view", false, view);
@@ -133,4 +140,6 @@ void renderTextUI(unsigned int program, const char* text, float x, float y, floa
     }
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+	glDepthMask(GL_TRUE);
 }

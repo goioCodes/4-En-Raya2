@@ -7,13 +7,25 @@
 
 static void printHBar();
 
-int placeToken(Board* board, Token user, int col)
+Token getLastPlayer(Board* board)
 {
+    return (board->turnCount % 2 == 0) + 1;
+}
+
+Token getCurrentPlayer(Board* board)
+{
+    return board->turnCount % 2 + 1;
+}
+
+int placeToken(Board* board, int col)
+{
+    Token user = getCurrentPlayer(board);
     for (int i = NUM_ROWS - 1; i >= 0; i--)
     {
         if (board->m[i][col] == EMPTY)
         {
             board->m[i][col] = user;
+            board->turnCount++;
             return i;
         }
     }
@@ -56,7 +68,7 @@ bool checkWinDirection(Board* board, int row, int col, int* direction)
     {
         if (board->m[startRow + direction[1] * k][startCol + direction[0] * k] == token)
         {
-            count += 1;
+            count++;
         }
         else
         {
@@ -70,12 +82,275 @@ bool checkWinDirection(Board* board, int row, int col, int* direction)
     return false;
 }
 
-bool boardIsFull(Board* board, int turn)
+Token checkWinFull(Board* board)
 {
-    // sizeof(board->m) retorna el numero de bytes, entre 4 per obtenir el numero d'ints.
-    return sizeof(board->m) / 4 == turn;
+    // Aquesta funcio comprova tot el tauler i retorna el jugador que ha guanyat si n'hi ha cap, 0 en cas contrari.
+    // Utilitza un algoritme diferent de les funcions d'adalt per optimitzar millor aquest cas.
+    Token currentToken;
+    int count;
+
+    // Verticals. Comprovem totes les columnes.
+    for (int j = 0; j < NUM_COLS; j++)
+    {
+        currentToken = EMPTY;
+        count = 0;
+        for (int i = 0; i < NUM_ROWS; i++)
+        {
+            if (board->m[i][j] == currentToken)
+            {
+                count++;
+            }
+            else
+            {
+                currentToken = board->m[i][j];
+                count = 1;
+            }
+
+            if (count >= 4 && currentToken != EMPTY)
+            {
+                return currentToken;
+            }
+        }
+    }
+
+    // Horitzontals
+    for (int i = 0; i < NUM_ROWS; i++)
+    {
+        currentToken = EMPTY;
+        count = 0;
+        for (int j = 0; j < NUM_COLS; j++)
+        {
+            if (board->m[i][j] == currentToken)
+            {
+                count++;
+            }
+            else
+            {
+                currentToken = board->m[i][j];
+                count = 1;
+            }
+
+            if (count >= 4 && currentToken != EMPTY)
+            {
+                return currentToken;
+            }
+        }
+    }
+
+    // Diagonals \ i / que comencen al costat esquerre
+    for (int i = 0; i < NUM_ROWS; i++)
+    {
+        //Diagonals \ 
+        currentToken = EMPTY;
+        count = 0;
+        for (int k = 0; k < min(NUM_ROWS - i, NUM_COLS); k++)
+        {
+            if (board->m[i + k][k] == currentToken)
+            {
+                count++;
+            }
+            else
+            {
+                currentToken = board->m[i + k][k];
+                count = 1;
+            }
+            if (count >= 4 && currentToken != EMPTY)
+            {
+                return currentToken;
+            }
+        }
+
+        // Diagonals /
+        currentToken = EMPTY;
+        count = 0;
+        for (int k = 0; k < min(i + 1, NUM_COLS); k++)
+        {
+            if (board->m[i - k][k] == currentToken)
+            {
+                count++;
+            }
+            else
+            {
+                currentToken = board->m[i - k][k];
+                count = 1;
+            }
+
+            if (count >= 4 && currentToken != EMPTY)
+            {
+                return currentToken;
+            }
+        }
+    }
+    // Ens saltem la primera diagonal que ja hem comprovat
+    for (int j = 1; j < NUM_COLS; j++)
+    {
+        //Diagonals \ que comencen al limit superior
+        currentToken = EMPTY;
+        count = 0;
+        for (int k = 0; k < min(NUM_ROWS, NUM_COLS - j); k++)
+        {
+            if (board->m[k][j + k] == currentToken)
+            {
+                count++;
+            }
+            else
+            {
+                currentToken = board->m[k][j + k];
+                count = 1;
+            }
+            if (count >= 4 && currentToken != EMPTY)
+            {
+                return currentToken;
+            }
+        }
+
+        // Diagonals / que comencen al limit inferior
+        currentToken = EMPTY;
+        count = 0;
+        for (int k = 0; k < min(NUM_ROWS, NUM_COLS - j); k++)
+        {
+            if (board->m[NUM_ROWS - 1 - k][j + k] == currentToken)
+            {
+                count++;
+            }
+            else
+            {
+                currentToken = board->m[NUM_ROWS - 1 - k][j + k];
+                count = 1;
+            }
+
+            if (count >= 4 && currentToken != EMPTY)
+            {
+                return currentToken;
+            }
+        }
+    }
+
+    return EMPTY;
 }
 
+bool boardIsFull(Board* board)
+{
+    return board->turnCount == NUM_COLS * NUM_ROWS;
+}
+
+int getFreeColumnsCount(Board* board)
+{
+    int count = 0;
+    for (int j = 0; j < NUM_COLS; j++)
+    {
+        if (board->m[0][j] == EMPTY)
+        {
+            count++;
+        }
+    }
+    return count;
+}
+
+int* getFreeColumnsArray(Board* board, int freeCount)
+{
+    if (!freeCount) return NULL;
+    int* res = malloc(freeCount * sizeof(int));
+    if (!res)
+    {
+        printf("Error de memoria.\n");
+        return NULL;
+    }
+
+    for (int j = 0, i = 0; j < NUM_COLS; j++)
+    {
+        if (board->m[0][j] == EMPTY)
+        {
+            res[i++] = j;
+        }
+    }
+
+    return res;
+}
+
+/*
+int* getFreeColumnsArray(Board* board, int* freeCount)
+{
+    int buff[NUM_COLS];
+    int count = 0;
+    for (int j = 0; j < NUM_COLS; j++) // Per cada columna, comprova si està buida i en aquest cas guarda-la al següent lloc lliure
+    {
+        if (board->m[0][j] == EMPTY)
+        {
+            buff[count++] = j;
+        }
+    }
+    *freeCount = count;
+
+    if (!count) return NULL;
+    int* res = malloc(count * sizeof(int));
+    if (!res)
+    {
+        printf("Error de memoria.\n");
+        *freeCount = -1;
+        return NULL;
+    }
+
+    for (int i = 0; i < count; i++)
+    {
+        res[i] = buff[i];
+    }
+
+    return res;
+}
+*/
+
+int getWeightedSum(Board* board)
+{
+    Token current = getCurrentPlayer(board);
+    int weight;
+    int sumCurr = 0;
+    int sumOpo = 0;
+    for (int j = 0; j < NUM_COLS; j++)
+    {
+        if (j == NUM_COLS/2)
+        {
+            weight = 2;
+        }
+        else if (j == NUM_COLS/2 + 1 || j == NUM_COLS / 2 - 1)
+        {
+            weight = 1;
+        }
+        else
+        {
+            weight = 0;
+        }
+
+        for (int i = 0; i < NUM_ROWS; i++)
+        {
+            if (board->m[i][j] == EMPTY)
+            {
+                continue;
+            }
+            if (board->m[i][j] == current)
+            {
+                sumCurr += weight;
+            }
+            else
+            {
+                sumOpo += weight;
+            }
+        }
+    }
+
+    return sumCurr - sumOpo;
+}
+
+bool moveWouldWin(Board* board, int col)
+{
+    Board board2 = *board;
+    int row = placeToken(&board2, col);
+    if (row != -1)
+    {
+        return checkWin(&board2, row, col);
+    }
+    return false;
+}
 
 void printBoard(Board* board)
 {
@@ -111,5 +386,6 @@ static void printHBar()
 
 void initializeBoard(Board* board)
 {
+    board->turnCount = 0;
     memset(board, 0, NUM_COLS * NUM_ROWS * sizeof(int));
 }

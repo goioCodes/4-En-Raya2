@@ -1,5 +1,4 @@
 #version 460 core
-#define NCENTERS 1
 
 in vec3 Normal;
 in vec3 FragPos;
@@ -54,8 +53,8 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
     // specular shading
-    vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    vec3 halfwayDir = normalize(lightDir + viewDir);  
+    float spec = pow(max(dot(normal, halfwayDir), 0.0), material.shininess);
     // combine results
     vec3 ambient  = light.ambient  * material.diffuse;
     vec3 diffuse  = light.diffuse  * diff * material.diffuse;

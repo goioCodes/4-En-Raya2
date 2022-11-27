@@ -11,7 +11,6 @@ void connect4Main()
 {
     Board board;
     Token currentPlayer = PLAYER1;
-    int turnCount = 1;
     initializeBoard(&board);
     printBoard(&board);
 
@@ -25,7 +24,7 @@ void connect4Main()
             printf("\nJugador %s %d " ANSI_COLOR_RESET ", columna?\n", COLOR(currentPlayer), currentPlayer);
             getUserInput(&col);
             // Coloquem la fitxa i mirem que no estigui a una columna plena, si no es torna a repetir el proces
-            row = placeToken(&board, currentPlayer, col);
+            row = placeToken(&board, col);
             if (row != -1)
             {
                 break;
@@ -46,12 +45,11 @@ void connect4Main()
             printf("El jugador %d ha guanyat!\n", currentPlayer);
             break;
         }
-        if (boardIsFull(&board, turnCount))
+        if (boardIsFull(&board))
         {
             printf("Empat! Tothom perd.\n");
             break;
         }
-        turnCount++;
         currentPlayer = currentPlayer == PLAYER1 ? PLAYER2 : PLAYER1;
     }
 }

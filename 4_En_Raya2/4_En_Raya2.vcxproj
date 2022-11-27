@@ -149,6 +149,9 @@
     <ClCompile Include="board.c" />
     <ClCompile Include="boardModel.c" />
     <ClCompile Include="cylinderModel.c" />
+    <ClCompile Include="miniMax.c" />
+    <ClCompile Include="skyboxModel.c" />
+    <ClCompile Include="tableModel.c" />
     <ClCompile Include="textRenderer.c" />
   </ItemGroup>
   <ItemGroup>
@@ -158,14 +161,21 @@
     <ClInclude Include="colors.h" />
     <ClInclude Include="boardModel.h" />
     <ClInclude Include="cylinderModel.h" />
+    <ClInclude Include="skyboxModel.h" />
+    <ClInclude Include="tableModel.h" />
+    <ClInclude Include="miniMax.h" />
     <ClInclude Include="textRenderer.h" />
     <ClInclude Include="shaderutils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\board.frag" />
     <None Include="Shaders\fragshader.frag" />
-    <None Include="Shaders\textshader.frag" />
-    <None Include="Shaders\textshader.vert" />
+    <None Include="Shaders\skybox.frag" />
+    <None Include="Shaders\skybox.vert" />
+    <None Include="Shaders\table.frag" />
+    <None Include="Shaders\table.vert" />
+    <None Include="Shaders\text.frag" />
+    <None Include="Shaders\text.vert" />
     <None Include="Shaders\vertshader.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

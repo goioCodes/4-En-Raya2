@@ -16,6 +16,6 @@ void main()
 {
     gl_Position = projection * view * model * vec4(aPos, 1.0);
     FragPos = vec3(view * model * vec4(aPos, 1.f));
-    Normal = mat3(transpose(inverse(view * model))) * aNormal; // Transformem normals i posicio del llum a view coords
+    Normal = mat3(transpose(inverse(view * model))) * aNormal; // Transformem normals a view coords
     TexCoord = aTexCoord;
 }

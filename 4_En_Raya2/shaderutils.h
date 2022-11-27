@@ -10,6 +10,12 @@ typedef struct {
 } Material;
 
 typedef struct {
+    unsigned int diffuseTex;
+    unsigned int normalTex;
+    float shininess;
+} TexturedMaterial;
+
+typedef struct {
     vec3 direction;
     vec3 ambient;
     vec3 diffuse;

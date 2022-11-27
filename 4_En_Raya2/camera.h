@@ -12,6 +12,13 @@ typedef struct {
     float phi; // Angle azimutal
     float theta; // Angle latitud (-pi/2, pi/2)
 
+    vec3 orbitCenter;
+    float orbitRadius;
+
+    float orbitRadiusTarget;
+    float phiTarget;
+    float thetaTarget;
+
     float movementSpeed;
     float mouseSensitivity;
 } Camera;
@@ -23,8 +30,10 @@ typedef enum {
     RIGHT
 } Camera_Movement;
 
-void cameraInitialize(Camera* cam, const vec3 position);
+void cameraInitialize(Camera* cam, const vec3 position, const vec3 orbitCenter);
 void cameraProcessMouseMovement(Camera* cam, float xoffset, float yoffset);
 void cameraProcessKeyborad(Camera* cam, Camera_Movement direction, float deltaTime);
+void cameraProcessScroll(Camera* cam, float yoffset);
 void cameraGetViewMatrix(Camera* cam, mat4 dest);
+void cameraLerpToTarget(Camera* cam, float deltaTime);
 #endif

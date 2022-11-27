@@ -42,6 +42,15 @@
     <ClCompile Include="textRenderer.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
+    <ClCompile Include="miniMax.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="tableModel.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="skyboxModel.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shaderutils.h">
@@ -68,6 +77,15 @@
     <ClInclude Include="textRenderer.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="miniMax.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="tableModel.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="skyboxModel.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\fragshader.frag">
@@ -79,10 +97,22 @@
     <None Include="Shaders\board.frag">
       <Filter>Archivos de recursos</Filter>
     </None>
-    <None Include="Shaders\textshader.frag">
+    <None Include="Shaders\table.frag">
       <Filter>Archivos de recursos</Filter>
     </None>
-    <None Include="Shaders\textshader.vert">
+    <None Include="Shaders\table.vert">
+      <Filter>Archivos de recursos</Filter>
+    </None>
+    <None Include="Shaders\text.frag">
+      <Filter>Archivos de recursos</Filter>
+    </None>
+    <None Include="Shaders\text.vert">
+      <Filter>Archivos de recursos</Filter>
+    </None>
+    <None Include="Shaders\skybox.frag">
+      <Filter>Archivos de recursos</Filter>
+    </None>
+    <None Include="Shaders\skybox.vert">
       <Filter>Archivos de recursos</Filter>
     </None>
   </ItemGroup>

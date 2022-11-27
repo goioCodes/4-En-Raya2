@@ -19,5 +19,5 @@ typedef struct {
 
 void initTextRenderer(TextRenderer* ren, float scr_width, float scr_height);
 void textUpdateScreenSize(TextRenderer* ren, float scr_width, float scr_height);
-void renderTextUI(unsigned int program, const char* text, float x, float y, float scale, vec3 color, TextRenderer* ren);
+void renderTextUI(unsigned int program, const char* text, float x, float y, float scale, vec3 color, vec3 outline, TextRenderer* ren);
 #endif

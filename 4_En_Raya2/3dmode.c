@@ -4,7 +4,10 @@
 #include "board.h"
 #include "boardModel.h"
 #include "cylinderModel.h"
+#include "tableModel.h"
+#include "skyboxModel.h"
 #include "textRenderer.h"
+#include "miniMax.h"
 
 #include <cglm/cglm.h>
 
@@ -22,34 +25,72 @@
 const char vertexShaderPath[] = "Shaders/vertshader.vert";
 const char boardFragmentShaderPath[] = "Shaders/board.frag";
 const char fragmentShaderPath[] = "Shaders/fragshader.frag";
-const char textVertexShaderPath[] = "Shaders/textshader.vert";
-const char textFragmentShaderPath[] = "Shaders/textshader.frag";
+const char textVertexShaderPath[] = "Shaders/text.vert";
+const char textFragmentShaderPath[] = "Shaders/text.frag";
+const char tableVertexShaderPath[] = "Shaders/table.vert";
+const char tableFragmentShaderPath[] = "Shaders/table.frag";
+const char skyboxVertexShaderPath[] = "Shaders/skybox.vert";
+const char skyboxFragmentShaderPath[] = "Shaders/skybox.frag";
+
+const char tableDiffuseMapPath[] = "Textures/wood_color.jpg";
+const char tableNormalMapPath[] = "Textures/wood_normal.png";
+
+const char* skyboxFacesPath[] = {
+	"Textures/skybox/right.jpg",
+	"Textures/skybox/left.jpg",
+	"Textures/skybox/top.jpg",
+	"Textures/skybox/bottom.jpg",
+	"Textures/skybox/front.jpg",
+	"Textures/skybox/back.jpg",
+};
+
+const char* skyboxFacesPath2[] = {
+	"Textures/skybox2/px.png",
+	"Textures/skybox2/nx.png",
+	"Textures/skybox2/py.png",
+	"Textures/skybox2/ny.png",
+	"Textures/skybox2/pz.png",
+	"Textures/skybox2/nz.png",
+};
+
+const char* skyboxFacesPath3[] = {
+	"Textures/skybox3/px.png",
+	"Textures/skybox3/nx.png",
+	"Textures/skybox3/py.png",
+	"Textures/skybox3/ny.png",
+	"Textures/skybox3/pz.png",
+	"Textures/skybox3/nz.png",
+};
 
 #define SCR_WIDTH_INIT 800
 #define SCR_HEIGHT_INIT 600
 
 const vec3 initialCameraPos = { 0.f, 1.f, 3.f };
+const vec3 cameraOrbitCenter = { 0.f, 1.f, 0.f };
 
 const vec3 textParams = { 25.f, 25.f, 1.f };
 
-#define lightDir (vec3){ -0.2f, -1.0f, -0.3f }
+#define lightDir (vec3){ -1.5f, -3.0f, -1.5f }
+#define lightPos (vec3){ 1.5f, 3.f, 1.5f }
 #define boardScale (vec3){ 0.5f, 0.5f, 0.5f }
 
 const float tokenSpawnHeight = 6;
 
-const float gravity = 0.2;
+const float gravity = 30.0;
 
 typedef struct {
 	int cursorInd;
 	float cursorPos;
 	vec2 tokenPositions[NUM_ROWS][NUM_COLS];
 
+	bool computerWaiting;
+	float computerWaitStartTime;
+	float computerWaitDuration;
+
 	bool gameFinished;
 
 	// Internal game
 	Board board;
-	Token currentPlayer;
-	int turnCount;
 } GameState;
 
 typedef struct {
@@ -64,37 +105,45 @@ typedef struct {
 	// Mouse position
 	float lastX;
 	float lastY;
-	
+
+	bool draggingCamera;
+
 	// Framerate
 	float deltaTime;
 	float lastFrame;
 
+	bool twoPlayerMode;
 	// Game info
 	GameState gameState;
 } Resources;
 
-void processPhysics(GameState* gs, float centers[][NUM_COLS][2], float fixedDeltaTime);
+void processPhysics(Resources* resources, float centers[][NUM_COLS][2], float fixedDeltaTime);
+void placeToken3D(Resources* resources, int col);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+unsigned int loadTexture(const char* path);
+unsigned int loadCubemap(const char** faces);
 
 Material boardMat = {
 		.diffuse = {0.f, 0.6f, 1.f},
 		.specular = {.5f,.5f,.5f},
-		.shininess = 32.f
+		.shininess = 128.f
 };
 
 Material p1Mat = {
 	.diffuse = {1.f, 0.f, 0.f},
 	.specular = {.5f,.5f,.5f},
-	.shininess = 32.f
+	.shininess = 128.f
 };
 
 Material p2Mat = {
 	.diffuse = {1.f, 1.f, 0.f},
 	.specular = {.5f,.5f,.5f},
-	.shininess = 32.f
+	.shininess = 128.f
 };
 
 Material cursorMat = {
@@ -104,12 +153,12 @@ Material cursorMat = {
 };
 
 DirLight dirLight = {
-	.ambient = { 0.4f, 0.4f, 0.4f },
-	.diffuse = { 0.7f, 0.7f, 0.7f },
+	.ambient = { 0.2f, 0.2f, 0.2f },
+	.diffuse = { 1.f, 1.f, 1.f },
 	.specular = { 1.0f, 1.0f, 1.0f },
 };
 
-const int fixedPhysicsStepsPS = 60;
+const int fixedPhysicsStepsPS = 120;
 
 bool threedmode = true;
 
@@ -121,6 +170,8 @@ int main()
 		return 0;
 	}
 
+	//printf("%lld\n", sizeof(Node));
+
 	// Inicialització de GLFW
 	glfwInit();
 	// Configuració de GLFW
@@ -129,7 +180,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Creació de la finestra
-	GLFWwindow* window = glfwCreateWindow(800, 600, "Epic window", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH_INIT, SCR_HEIGHT_INIT, "Epic window", NULL, NULL);
 	if (window == NULL)
 	{
 		printf("No s'ha pogut crear la finestra");
@@ -149,6 +200,7 @@ int main()
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
 
 	//--------GLOBAL RESOURCES---------
 	Resources resources = {
@@ -160,19 +212,15 @@ int main()
 		.lastX = SCR_WIDTH_INIT / 2.0f,
 		.lastY = SCR_HEIGHT_INIT / 2.0f,
 
-		.lastFrame = 0.0f,
-		.deltaTime = 0.0f,
-
-		.gameState = {	
+		.twoPlayerMode = false,
+		.gameState = {
 						.cursorInd = NUM_COLS / 2,
-						.currentPlayer = PLAYER1,
-						.turnCount = 1
 					 }
 	};
 	initializeBoard(&resources.gameState.board);
 
 	//------------CAMERA---------------
-	cameraInitialize(&resources.camera, initialCameraPos);
+	cameraInitialize(&resources.camera, initialCameraPos, cameraOrbitCenter);
 
 	//-------------TEXT----------------
 	initTextRenderer(&resources.textRender, (float)SCR_WIDTH_INIT, (float)SCR_HEIGHT_INIT);
@@ -182,7 +230,9 @@ int main()
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetMouseButtonCallback(window, mouse_button_callback);
+	glfwSetScrollCallback(window, scroll_callback);
+	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 	//------------SHADERS--------------
 
@@ -196,13 +246,10 @@ int main()
 	}
 
 	//FRAGMENT SHADER BOARD
-	char* names[] = { "NCENTERS" };
-	int vals[] = { NUM_COLS * NUM_ROWS };
-	shaders[1] = loadShader(boardFragmentShaderPath, GL_FRAGMENT_SHADER, 1, names, vals);
+	shaders[1] = loadShader(boardFragmentShaderPath, GL_FRAGMENT_SHADER, 0, NULL, NULL);
 	if (!shaders[1])
 	{
 		printf("Creacio del fragment shader board fallida.\n");
-		glDeleteShader(shaders[0]);
 		return -1;
 	}
 
@@ -214,7 +261,6 @@ int main()
 	if (!shaderProgramBoard)
 	{
 		printf("Error de link.\n");
-		glDeleteShader(shaders[0]);
 		return -1;
 	}
 
@@ -223,8 +269,6 @@ int main()
 	if (!shaders[1])
 	{
 		printf("Creacio del fragment shader general fallida.\n");
-		glDeleteShader(shaders[0]);
-		glDeleteProgram(shaderProgramBoard);
 		return -1;
 	}
 
@@ -237,7 +281,6 @@ int main()
 	if (!shaderProgram)
 	{
 		printf("Error de link.\n");
-		glDeleteProgram(shaderProgramBoard);
 		return -1;
 	}
 
@@ -246,8 +289,6 @@ int main()
 	if (!shaders[0])
 	{
 		printf("Creacio del vertex shader text fallida.\n");
-		glDeleteProgram(shaderProgramBoard);
-		glDeleteProgram(shaderProgram);
 		return -1;
 	}
 
@@ -256,9 +297,6 @@ int main()
 	if (!shaders[1])
 	{
 		printf("Creacio del fragment shader text fallida.\n");
-		glDeleteShader(shaders[0]);
-		glDeleteProgram(shaderProgramBoard);
-		glDeleteProgram(shaderProgram);
 		return -1;
 	}
 
@@ -271,10 +309,82 @@ int main()
 	if (!shaderProgramText)
 	{
 		printf("Error de link.\n");
-		glDeleteProgram(shaderProgramBoard);
-		glDeleteProgram(shaderProgram);
 		return -1;
 	}
+
+	// VERTEX SHADER TABLE
+	shaders[0] = loadShader(tableVertexShaderPath, GL_VERTEX_SHADER, 0, NULL, NULL);
+	if (!shaders[0])
+	{
+		printf("Creacio del vertex shader table fallida.\n");
+		return -1;
+	}
+
+	//FRAGMENT SHADER TABLE
+	shaders[1] = loadShader(tableFragmentShaderPath, GL_FRAGMENT_SHADER, 0, NULL, NULL);
+	if (!shaders[1])
+	{
+		printf("Creacio del fragment shader table fallida.\n");
+		return -1;
+	}
+
+	// Shader program table
+	unsigned int shaderProgramTable = linkProgram(shaders, 2);
+
+	glDeleteShader(shaders[0]);
+	glDeleteShader(shaders[1]);
+
+	if (!shaderProgramTable)
+	{
+		printf("Error de link.\n");
+		return -1;
+	}
+
+	// VERTEX SHADER SKYBOX
+	shaders[0] = loadShader(skyboxVertexShaderPath, GL_VERTEX_SHADER, 0, NULL, NULL);
+	if (!shaders[0])
+	{
+		printf("Creacio del vertex shader skybox fallida.\n");
+		return -1;
+	}
+
+	//FRAGMENT SHADER SKYBOX
+	shaders[1] = loadShader(skyboxFragmentShaderPath, GL_FRAGMENT_SHADER, 0, NULL, NULL);
+	if (!shaders[1])
+	{
+		printf("Creacio del fragment shader skybox fallida.\n");
+		return -1;
+	}
+
+	// Shader program skybox
+	unsigned int shaderProgramSkybox = linkProgram(shaders, 2);
+
+	glDeleteShader(shaders[0]);
+	glDeleteShader(shaders[1]);
+
+	if (!shaderProgramSkybox)
+	{
+		printf("Error de link.\n");
+		return -1;
+	}
+
+	//----------SHADER SETUP-----------
+
+	glUseProgram(shaderProgramTable);
+	setUniformi(shaderProgramTable, "diffuseMap", 0);
+	setUniformi(shaderProgramTable, "normalMap", 1);
+
+	glUseProgram(shaderProgramSkybox);
+	setUniformi(shaderProgramTable, "skybox", 0);
+
+	//------------MATERIALS------------
+
+	TexturedMaterial tableMat;
+	tableMat.shininess = 32.f;
+	tableMat.diffuseTex = loadTexture(tableDiffuseMapPath);
+	tableMat.normalTex = loadTexture(tableNormalMapPath);
+
+	unsigned int skyboxCubemap = loadCubemap(skyboxFacesPath);
 
 	//-------------MODELS--------------
 
@@ -299,11 +409,21 @@ int main()
 		return -1;
 	}
 
+	TableModel* tableM = generateTable();
+	if (!tableM)
+	{
+		printf("No s'han pogut generar els vertexs de la taula.\n");
+		return -1;
+	}
+
+	SkyboxModel* skyboxM = generateSkybox();
+
 	resources.gameState.cursorPos = boardM->centers[0][resources.gameState.cursorInd][0];
 
-	float physicsDeltaTime = 1.0f / fixedPhysicsStepsPS;
+	float fixedDeltaTime = 1.0f / fixedPhysicsStepsPS;
 	float lastPhysicsTime = 0.0f;
-	cameraInitialize(&resources.camera, initialCameraPos);
+
+
 	glfwSetCursorPos(window, resources.lastX, resources.lastY);
 
 	// Render loop
@@ -319,9 +439,17 @@ int main()
 		glfwPollEvents();
 		processInput(window);
 
-		if (currentFrame - lastPhysicsTime >= physicsDeltaTime)
+		if ((currentFrame - lastPhysicsTime) >= fixedDeltaTime)
 		{
-			processPhysics(&resources.gameState, boardM->centers, physicsDeltaTime);
+			// Passar fixedDeltaTime per evitar salts amb pocs FPS?
+			processPhysics(&resources, boardM->centers, fixedDeltaTime);
+			lastPhysicsTime = currentFrame;
+		}
+
+		if (resources.gameState.computerWaiting && (currentFrame - resources.gameState.computerWaitStartTime) >= resources.gameState.computerWaitDuration)
+		{
+			placeToken3D(&resources, miniMaxGetPlay(&resources.gameState.board));
+			resources.gameState.computerWaiting = false;
 		}
 
 		glClearColor(0.8f, 0.8f, 0.8f, 1.f);
@@ -340,6 +468,21 @@ int main()
 
 		// MODEL MATRIX
 		mat4 model;
+
+
+		// DIBUIXANT: SKYBOX
+		// Uniforms del shader:
+		// Vertex:                   Fragment:
+		// view, projection          skybox
+		glUseProgram(shaderProgramSkybox);
+		setUniformMat4(shaderProgramSkybox, "projection", GL_FALSE, projection);
+		mat3 upperLeftView;
+		glm_mat4_pick3(view, upperLeftView);
+		mat4 skyView = GLM_MAT4_IDENTITY_INIT;
+		glm_mat4_ins3(upperLeftView, skyView);
+		setUniformMat4(shaderProgramSkybox, "view", GL_FALSE, skyView);
+
+		drawSkybox(skyboxM, shaderProgramSkybox, skyboxCubemap);
 
 
 		// DIBUIXANT: TAULER
@@ -400,12 +543,27 @@ int main()
 		drawCylinder(cursorM, shaderProgram, model, &cursorMat);
 
 
-		// DIBUIXANT: TEXT UI
-		glDisable(GL_DEPTH_TEST);
-		glUseProgram(shaderProgramText);
-		renderTextUI(shaderProgramText, resources.textBox, textParams[0], textParams[1], textParams[2], (vec3) { 0.f, 0.f, 0.f }, &resources.textRender);
+		// DIBUIXANT: TAULA
+		glUseProgram(shaderProgramTable);
+		// Uniforms del shader:
+		// Vertex:                   Fragment:
+		// model, view, projection   diffuseMap, normalMap, shininess, viewPos, lightPos
+		setUniformMat4(shaderProgramTable, "projection", GL_FALSE, projection);
+		setUniformMat4(shaderProgramTable, "view", GL_FALSE, view);
+		glm_scale_make(model, boardScale);
+		glm_translate(model, (vec3) { 0.f, 0.5f * cosf(2 * (float)M_PI / 3) - 0.5f * boardScale[1], 0.f });
+		glm_rotate_x(model, -(float)M_PI_2, model);
+		glm_scale(model, (vec3){ 5.f, 5.f, 1.f });
+		setUniformVec3(shaderProgramTable, "viewPos", resources.camera.position);
+		setUniformVec3(shaderProgramTable, "lightPos", lightPos);
 
-		glEnable(GL_DEPTH_TEST);
+		drawTable(tableM, shaderProgramTable, model, &tableMat);
+		
+
+		// DIBUIXANT: TEXT UI
+		glUseProgram(shaderProgramText);
+		renderTextUI(shaderProgramText, resources.textBox, textParams[0], textParams[1], textParams[2], (vec3) { 0.f, 0.f, 0.f }, (vec3) { 1.f, 1.f, 1.f }, & resources.textRender);
+
 		glfwSwapBuffers(window);
 	}
 
@@ -413,9 +571,10 @@ int main()
 	return 0;
 }
 
-void processPhysics(GameState* gs,  float centers[][NUM_COLS][2], float fixedDeltaTime)
+void processPhysics(Resources* resources,  float centers[][NUM_COLS][2], float fixedDeltaTime)
 {
-	gs->cursorPos = glm_lerp(gs->cursorPos, centers[0][gs->cursorInd][0], 3.f * fixedDeltaTime);
+	GameState* gs = &resources->gameState;
+	gs->cursorPos = glm_lerp(gs->cursorPos, centers[0][gs->cursorInd][0], 15.f * fixedDeltaTime);
 	
 	Token ptoken;
 	for (int i = 0; i < NUM_ROWS; i++)
@@ -428,40 +587,54 @@ void processPhysics(GameState* gs,  float centers[][NUM_COLS][2], float fixedDel
 				continue;
 			}
 
-			gs->tokenPositions[i][j][0] += gs->tokenPositions[i][j][1] * fixedDeltaTime;
 			gs->tokenPositions[i][j][1] -= gravity * fixedDeltaTime;
+			gs->tokenPositions[i][j][0] += gs->tokenPositions[i][j][1] * fixedDeltaTime;
 			if (gs->tokenPositions[i][j][0] < centers[i][0][1])
 			{
-				gs->tokenPositions[i][j][1] = fabsf(gs->tokenPositions[i][j][1]) * 0.35f;
+				gs->tokenPositions[i][j][1] = fabsf(gs->tokenPositions[i][j][1]) * 0.3f;
 				gs->tokenPositions[i][j][0] = centers[i][0][1];
 			}
 		}
 	}
+
+	if (!resources->draggingCamera)
+	{
+		cameraLerpToTarget(&resources->camera, fixedDeltaTime);
+	}
 }
 
+void queueComputerPlay(Resources* resources, float waitTime)
+{
+	resources->gameState.computerWaiting = true;
+	resources->gameState.computerWaitDuration = waitTime;
+	resources->gameState.computerWaitStartTime = (float)glfwGetTime();
+}
 
 void nextTurn(Resources* resources, int row, int col)
 {
 	if (checkWin(&resources->gameState.board, row, col))
 	{
-		sprintf(resources->textBox, "El jugador %d ha guanyat!", resources->gameState.currentPlayer);
+		sprintf(resources->textBox, "El jugador %d ha guanyat!", getLastPlayer(&resources->gameState.board));
 		resources->gameState.gameFinished = true;
 		return;
 	}
-	if (boardIsFull(&resources->gameState.board, resources->gameState.turnCount))
+	if (boardIsFull(&resources->gameState.board))
 	{
 		sprintf(resources->textBox, "Empat! Tothom perd.");
 		resources->gameState.gameFinished = true;
 		return;
 	}
-	resources->gameState.turnCount++;
-	resources->gameState.currentPlayer = resources->gameState.currentPlayer == PLAYER1 ? PLAYER2 : PLAYER1;
-	sprintf(resources->textBox, "Torn del jugador %d.", resources->gameState.currentPlayer);
+	sprintf(resources->textBox, "Torn del jugador %d.", getCurrentPlayer(&resources->gameState.board));
+
+	if (getCurrentPlayer(&resources->gameState.board) == PLAYER2 && !resources->twoPlayerMode)
+	{
+		queueComputerPlay(resources, 1.0f);
+	}
 }
 
 void placeToken3D(Resources* resources, int col)
 {
-	int row = placeToken(&resources->gameState.board, resources->gameState.currentPlayer, col);
+	int row = placeToken(&resources->gameState.board, col);
 	if (row != -1)
 	{
 		resources->gameState.tokenPositions[row][col][0] = tokenSpawnHeight;
@@ -499,7 +672,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		}
 	}
 
-	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && !resources->gameState.gameFinished)
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && !resources->gameState.gameFinished && !resources->gameState.computerWaiting)
 	{
 		placeToken3D(resources, resources->gameState.cursorInd);
 	}
@@ -516,7 +689,26 @@ void mouse_callback(GLFWwindow* window, double xposd, double yposd)
 	resources->lastX = xpos;
 	resources->lastY = ypos;
 
-	cameraProcessMouseMovement(&resources->camera, xoffset, yoffset);
+	//cameraProcessMouseMovement(&resources->camera, xoffset, yoffset);
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+	{
+		cameraProcessMouseMovement(&resources->camera, xoffset, yoffset);
+	}
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	Resources* resources = glfwGetWindowUserPointer(window);
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+		resources->draggingCamera = true;
+	else if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_RELEASE)
+		resources->draggingCamera = false;
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	Resources* resources = glfwGetWindowUserPointer(window);
+	cameraProcessScroll(&resources->camera, (float)yoffset);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
@@ -552,4 +744,77 @@ void processInput(GLFWwindow* window)
 		cameraProcessKeyborad(&resources->camera, RIGHT, resources->deltaTime);
 	}
 	*/
+}
+
+unsigned int loadTexture(const char* path)
+{
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+
+	stbi_set_flip_vertically_on_load(true);
+	int width, height, numComponents;
+	unsigned char* data = stbi_load(path, &width, &height, &numComponents, 0);
+	if (data)
+	{
+		GLenum format;
+		if (numComponents == 1)
+			format = GL_RED;
+		else if (numComponents == 3)
+			format = GL_RGB;
+		else if (numComponents == 4)
+			format = GL_RGBA;
+
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		stbi_image_free(data);
+	}
+	else
+	{
+		printf("No s'ha pogut carregar la textura.\n");
+		stbi_image_free(data);
+		glDeleteTextures(1, &textureID);
+		return 0;
+	}
+	stbi_set_flip_vertically_on_load(false);
+
+	return textureID;
+}
+
+unsigned int loadCubemap(const char** faces)
+{
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+	int width, height, numChannels;
+	for (unsigned int i = 0; i < 6; i++)
+	{
+		unsigned char* data = stbi_load(faces[i], &width, &height, &numChannels, 0);
+		if (data)
+		{
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+			);
+			stbi_image_free(data);
+		}
+		else
+		{
+			printf("No s'ha pogut carregar la cara %s.\n", faces[i]);
+			glDeleteTextures(1, &textureID);
+			return 0;
+		}
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	return textureID;
 }

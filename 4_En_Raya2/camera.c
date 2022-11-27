@@ -4,6 +4,7 @@
 #include <math.h>
 
 void updateCamVectors(Camera* cam);
+void updateCamOrbitPosition(Camera* cam);
 
 const float PHI = -90.f;
 const float THETA = 0.f;
@@ -11,14 +12,25 @@ const vec3 WORLDUP = { 0.f, 1.f, 0.f };
 const float SENSITIVITY = 0.1f;
 const float MOVEMENTSPEED = 2.5f;
 
-void cameraInitialize(Camera* cam, const vec3 position)
+void cameraInitialize(Camera* cam, const vec3 position, const vec3 orbitCenter)
 {
     glm_vec3_copy((float*)position, cam->position);
     glm_vec3_copy((float*)WORLDUP, cam->worldUp);
+
     cam->phi = PHI;
+    cam->phiTarget = cam->phi;
     cam->theta = THETA;
+    cam->thetaTarget = cam->theta;
+
+    glm_vec3_copy((float*)orbitCenter, cam->orbitCenter);
+    vec3 temp;
+    glm_vec3_sub(cam->position, cam->orbitCenter, temp);
+    cam->orbitRadius = glm_vec3_norm(temp);
+    cam->orbitRadiusTarget = cam->orbitRadius;
+
     cam->movementSpeed = MOVEMENTSPEED;
     cam->mouseSensitivity = SENSITIVITY;
+
     updateCamVectors(cam);
 }
 
@@ -31,6 +43,16 @@ void updateCamVectors(Camera* cam)
     glm_vec3_crossn(cam->front, cam->worldUp, cam->right);
     glm_vec3_cross(cam->right, cam->front, cam->up);
 
+}
+
+void updateCamOrbitPosition(Camera* cam)
+{
+    float phiOrb = 180.f + cam->phi;
+    float thetaOrb = -cam->theta;
+
+    cam->position[0] = cam->orbitCenter[0] + cam->orbitRadius * cosf(glm_rad(phiOrb)) * cosf(glm_rad(thetaOrb));
+    cam->position[1] = cam->orbitCenter[1] + cam->orbitRadius * sinf(glm_rad(thetaOrb));
+    cam->position[2] = cam->orbitCenter[2] + cam->orbitRadius * sinf(glm_rad(phiOrb)) * cosf(glm_rad(thetaOrb));
 }
 
 void cameraProcessMouseMovement(Camera* cam, float xoffset, float yoffset)
@@ -50,6 +72,7 @@ void cameraProcessMouseMovement(Camera* cam, float xoffset, float yoffset)
         cam->theta = -89.f;
     }
 
+    updateCamOrbitPosition(cam);
     updateCamVectors(cam);
 }
 
@@ -78,6 +101,26 @@ void cameraProcessKeyborad(Camera* cam, Camera_Movement direction, float deltaTi
         glm_vec3_add(cam->position, temp, cam->position);
     }
 }
+
+void cameraProcessScroll(Camera* cam, float yoffset)
+{
+    cam->orbitRadiusTarget -= yoffset; // Scroll cap a dalt = zoom
+    if (cam->orbitRadiusTarget < 1.f)
+    {
+        cam->orbitRadiusTarget = 1.f;
+    }
+}
+
+void cameraLerpToTarget(Camera* cam, float deltaTime)
+{
+    cam->phi = glm_lerpc(cam->phi, cam->phiTarget, 10.f * deltaTime);
+    cam->theta = glm_lerpc(cam->theta, cam->thetaTarget, 10.f * deltaTime);
+    cam->orbitRadius = glm_lerpc(cam->orbitRadius, cam->orbitRadiusTarget, 10.f * deltaTime);
+
+    updateCamOrbitPosition(cam);
+    updateCamVectors(cam);
+}
+
 
 void cameraGetViewMatrix(Camera* cam, mat4 dest)
 {
