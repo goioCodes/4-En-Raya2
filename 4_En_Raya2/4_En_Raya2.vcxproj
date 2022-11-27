@@ -151,6 +151,7 @@
     <ClCompile Include="cylinderModel.c" />
     <ClCompile Include="miniMax.c" />
     <ClCompile Include="skyboxModel.c" />
+    <ClCompile Include="launcher.c" />
     <ClCompile Include="tableModel.c" />
     <ClCompile Include="textRenderer.c" />
   </ItemGroup>
@@ -161,6 +162,7 @@
     <ClInclude Include="colors.h" />
     <ClInclude Include="boardModel.h" />
     <ClInclude Include="cylinderModel.h" />
+    <ClInclude Include="3dmode.h" />
     <ClInclude Include="skyboxModel.h" />
     <ClInclude Include="tableModel.h" />
     <ClInclude Include="miniMax.h" />

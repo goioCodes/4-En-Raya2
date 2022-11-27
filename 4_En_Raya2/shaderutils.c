@@ -41,7 +41,7 @@ char* readShaderSource(const char* filepath)
     fseek(sourceFile, 0, SEEK_SET); // I tornem al principi
 
     buffer = malloc((size_t)length + 1); // Afegim 1 pel null terminator
-    if (buffer == NULL)
+    if (!buffer)
     {
         fprintf(stderr, "No s'ha pogut alocar memoria.\n");
         fclose(sourceFile);

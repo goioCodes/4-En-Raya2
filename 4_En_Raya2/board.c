@@ -1,20 +1,26 @@
 #include "board.h"
 #include "colors.h"
+
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#define lastPlayer(board) (board->turnCount % 2 == 0) + 1
+#define currentPlayer(board) board->turnCount % 2 + 1
+
 static void printHBar();
 
 Token getLastPlayer(Board* board)
 {
-    return (board->turnCount % 2 == 0) + 1;
+    if (board->firstPlayer == PLAYER2) return currentPlayer(board);
+    return lastPlayer(board);
 }
 
 Token getCurrentPlayer(Board* board)
 {
-    return board->turnCount % 2 + 1;
+    if (board->firstPlayer == PLAYER2) return lastPlayer(board);
+    return currentPlayer(board);
 }
 
 int placeToken(Board* board, int col)
@@ -308,17 +314,35 @@ int getWeightedSum(Board* board)
     int sumOpo = 0;
     for (int j = 0; j < NUM_COLS; j++)
     {
-        if (j == NUM_COLS/2)
+        if (NUM_COLS % 2 == 0)
         {
-            weight = 2;
-        }
-        else if (j == NUM_COLS/2 + 1 || j == NUM_COLS / 2 - 1)
-        {
-            weight = 1;
+            if (j == NUM_COLS / 2 || j == NUM_COLS / 2 + 1)
+            {
+                weight = 2;
+            }
+            else if (j == NUM_COLS / 2 - 1 || j == NUM_COLS / 2 + 2)
+            {
+                weight = 1;
+            }
+            else
+            {
+                continue;
+            }
         }
         else
         {
-            weight = 0;
+            if (j == NUM_COLS / 2)
+            {
+                weight = 2;
+            }
+            else if (j == NUM_COLS / 2 + 1 || j == NUM_COLS / 2 - 1)
+            {
+                weight = 1;
+            }
+            else
+            {
+                continue;
+            }
         }
 
         for (int i = 0; i < NUM_ROWS; i++)
@@ -384,8 +408,9 @@ static void printHBar()
     printf("\n");
 }
 
-void initializeBoard(Board* board)
+void initializeBoard(Board* board, Token firstPlayer)
 {
+    board->firstPlayer = firstPlayer;
     board->turnCount = 0;
-    memset(board, 0, NUM_COLS * NUM_ROWS * sizeof(int));
+    memset(board->m, 0, NUM_COLS * NUM_ROWS * sizeof(int));
 }

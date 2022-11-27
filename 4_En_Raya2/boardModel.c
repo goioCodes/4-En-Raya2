@@ -4,6 +4,8 @@
 #include <glad/glad.h>
 #include <stdlib.h>
 #include <stdio.h>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 void getCenters(float cents[][NUM_COLS][2], float colrowsize)
 {

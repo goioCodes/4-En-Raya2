@@ -2,6 +2,7 @@
 #include "shaderutils.h"
 
 #include <string.h>
+#include <stdbool.h>
 #include <cglm/cglm.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H

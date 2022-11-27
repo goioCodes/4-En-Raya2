@@ -4,7 +4,6 @@
 #include <float.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <Windows.h>
 
 int miniMaxGetPlay(Board* board)
 {
@@ -13,6 +12,8 @@ int miniMaxGetPlay(Board* board)
     if (nextMiniMaxLevel(root, 0, &bestPlay) == DBL_MAX)
     {
         printf("Error minimax.\n");
+        eraseTree(root);
+        return -1;
     }
     //traverseTree(root->childs[2]->childs[4], 2);
     eraseTree(root);
@@ -70,7 +71,7 @@ Node* createNode(Node* parent, int col, int depth)
     {
         node->numChilds = 0;
         node->value = heuristicFunction(node); // Important! La funció heurística calcularà el valor sempre des de la perspectiva
-                                                    // del jugador que ha de tirar a continuació.
+                                               // del jugador que ha de tirar a continuació.
     }
     else
     {
@@ -111,23 +112,23 @@ double nextMiniMaxLevel(Node* parent, int depth, int* bestPlay)
             printf("Error creant arbre al nivell %d.\n", depth);
             return DBL_MAX;
         }
-        //if (depth == 1) printf("Child %d value: %lf\n", i, parent->childs[i]->value);
 
-        // Com que ho mirem tot des del punt de vista del jugador actual, les puntuacions més positives pel jugador contrari
-        // serán les més negatives per a mi. Per tant voldrem escollir la jugada amb valoració més negativa des del punt
-        // de vista del contrari. Així doncs negarem la valoració dels fills, i escollim la màxima.
-        // 
-        // Dit d'una altra forma, si x,y son les valoracions dels fills, tenim que
-        // min(x, y) = -max(-x, -y)
-        // I quan volguem fer el màxim d'aquests valors al nivell superior, ens trobarem
-        // max(-max(-x, -y), -max(-z, -w)) = max(min(x, y), min(z, w))
-        // Per tant es el mateix que fer minimax però sense haver de comprovar en el torn de qui ens trobem, ni
-        // haver d'escriure una funció heurística que tingui en compte a qui li toca.
         if (-parent->childs[i]->value > bestScore)
         {
             bestScore = -parent->childs[i]->value;
             *bestPlay = parent->childCols[i];
         }
+        // Com que ho mirem tot des del punt de vista del jugador actual, les puntuacions més beneficioses pel jugador contrari
+        // serán les més negatives per a mi. Per tant el jugador contrari vol escollir la jugada amb valoració més negativa des del punt
+        // de vista del jugador actual. Així doncs negarem la valoració dels fills, i escollim la màxima.
+        // 
+        // Dit d'una altra forma, si x,y son les valoracions dels fills, tenim que
+        // min(x, y) = -max(-x, -y)
+        // i el valor que ens estem quedant como a millor és max(-x, -y)
+        // Quan volguem fer el màxim d'aquests valors al nivell superior, ens trobarem
+        // max(-max(-x, -y), -max(-z, -w)) = max(min(x, y), min(z, w))
+        // Per tant es el mateix que fer minimax però sense haver de comprovar en el torn de qui ens trobem, ni
+        // haver d'escriure una funció heurística que tingui en compte a qui li toca.
     }
 
     return bestScore;

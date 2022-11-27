@@ -35,7 +35,7 @@ const char skyboxFragmentShaderPath[] = "Shaders/skybox.frag";
 const char tableDiffuseMapPath[] = "Textures/wood_color.jpg";
 const char tableNormalMapPath[] = "Textures/wood_normal.png";
 
-const char* skyboxFacesPath[] = {
+const char* skyboxFacesPath1[] = {
 	"Textures/skybox/right.jpg",
 	"Textures/skybox/left.jpg",
 	"Textures/skybox/top.jpg",
@@ -160,18 +160,8 @@ DirLight dirLight = {
 
 const int fixedPhysicsStepsPS = 120;
 
-bool threedmode = true;
-
-int main()
+int main3d(Token firstPlayer, bool twoplayers, int skybox)
 {
-	if (!threedmode)
-	{
-		connect4Main();
-		return 0;
-	}
-
-	//printf("%lld\n", sizeof(Node));
-
 	// Inicialització de GLFW
 	glfwInit();
 	// Configuració de GLFW
@@ -181,7 +171,7 @@ int main()
 
 	// Creació de la finestra
 	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH_INIT, SCR_HEIGHT_INIT, "Epic window", NULL, NULL);
-	if (window == NULL)
+	if (!window)
 	{
 		printf("No s'ha pogut crear la finestra");
 		glfwTerminate();
@@ -212,12 +202,12 @@ int main()
 		.lastX = SCR_WIDTH_INIT / 2.0f,
 		.lastY = SCR_HEIGHT_INIT / 2.0f,
 
-		.twoPlayerMode = false,
+		.twoPlayerMode = twoplayers,
 		.gameState = {
 						.cursorInd = NUM_COLS / 2,
 					 }
 	};
-	initializeBoard(&resources.gameState.board);
+	initializeBoard(&resources.gameState.board, firstPlayer);
 
 	//------------CAMERA---------------
 	cameraInitialize(&resources.camera, initialCameraPos, cameraOrbitCenter);
@@ -384,6 +374,7 @@ int main()
 	tableMat.diffuseTex = loadTexture(tableDiffuseMapPath);
 	tableMat.normalTex = loadTexture(tableNormalMapPath);
 
+	const char** skyboxFacesPath = skybox == 1 ? skyboxFacesPath1 : skybox == 2 ? skyboxFacesPath2 : skyboxFacesPath3;
 	unsigned int skyboxCubemap = loadCubemap(skyboxFacesPath);
 
 	//-------------MODELS--------------
@@ -417,6 +408,11 @@ int main()
 	}
 
 	SkyboxModel* skyboxM = generateSkybox();
+	if (!skyboxM)
+	{
+		printf("No s'han pogut generar els vertexs de la skybox.\n");
+		return -1;
+	}
 
 	resources.gameState.cursorPos = boardM->centers[0][resources.gameState.cursorInd][0];
 
@@ -448,7 +444,10 @@ int main()
 
 		if (resources.gameState.computerWaiting && (currentFrame - resources.gameState.computerWaitStartTime) >= resources.gameState.computerWaitDuration)
 		{
-			placeToken3D(&resources, miniMaxGetPlay(&resources.gameState.board));
+			int col = miniMaxGetPlay(&resources.gameState.board);
+			if (col == -1)
+				return -1;
+			placeToken3D(&resources, col);
 			resources.gameState.computerWaiting = false;
 		}
 
@@ -471,10 +470,10 @@ int main()
 
 
 		// DIBUIXANT: SKYBOX
+		glUseProgram(shaderProgramSkybox);
 		// Uniforms del shader:
 		// Vertex:                   Fragment:
 		// view, projection          skybox
-		glUseProgram(shaderProgramSkybox);
 		setUniformMat4(shaderProgramSkybox, "projection", GL_FALSE, projection);
 		mat3 upperLeftView;
 		glm_mat4_pick3(view, upperLeftView);

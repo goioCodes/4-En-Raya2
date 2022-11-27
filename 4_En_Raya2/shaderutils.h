@@ -1,5 +1,6 @@
 #ifndef __SHADERUTILS_H_
 #define __SHADERUTILS_H_
+#include <stdbool.h>
 #include <cglm/cglm.h>
 #include <glad/glad.h>
 

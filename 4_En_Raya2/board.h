@@ -2,8 +2,8 @@
 #define __BOARD_H_
 #include <stdbool.h>
 
-#define NUM_ROWS 8
-#define NUM_COLS 8
+#define NUM_ROWS 6
+#define NUM_COLS 7
 
 typedef enum {
     EMPTY,
@@ -12,6 +12,7 @@ typedef enum {
 } Token;
 
 typedef struct {
+    Token firstPlayer;
     int turnCount;
     Token m[NUM_ROWS][NUM_COLS];
 } Board;
@@ -21,7 +22,7 @@ void printBoard(Board* board);
 Token getCurrentPlayer(Board* board);
 Token getLastPlayer(Board* board);
 
-void initializeBoard(Board* board);
+void initializeBoard(Board* board, Token firstPlayer);
 int placeToken(Board* board, int col);
 
 bool boardIsFull(Board* board);

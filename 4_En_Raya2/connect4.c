@@ -1,75 +1,90 @@
 #include "connect4.h"
 #include "colors.h"
 #include "board.h"
+#include "miniMax.h"
 
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-void connect4Main()
+int mainConsole(Token firstPlayer, bool twoplayers)
 {
     Board board;
-    Token currentPlayer = PLAYER1;
-    initializeBoard(&board);
+    initializeBoard(&board, firstPlayer);
     printBoard(&board);
 
     while (true)
     {
+        Token currentPlayer = getCurrentPlayer(&board);
         // Torn d'un usuari
         int col, row;
-        while (true)
+        if (!twoplayers && currentPlayer == PLAYER2)
         {
-            // Agafem la columna on l'usuari vol colocar
-            printf("\nJugador %s %d " ANSI_COLOR_RESET ", columna?\n", COLOR(currentPlayer), currentPlayer);
-            getUserInput(&col);
-            // Coloquem la fitxa i mirem que no estigui a una columna plena, si no es torna a repetir el proces
+            col = miniMaxGetPlay(&board);
+            if (col == -1)
+                return -1;
             row = placeToken(&board, col);
-            if (row != -1)
+        }
+        else
+        {
+            while (true)
             {
-                break;
-            }
-            else
-            {
-                printf("Columna plena!\n");
+                // Agafem la columna on l'usuari vol colocar
+                printf("\nJugador %s %d " ANSI_COLOR_RESET ", columna?\n", COLOR(currentPlayer), currentPlayer);
+                getUserInput(&col, 1, NUM_COLS, true);
+                // Coloquem la fitxa i mirem que no estigui a una columna plena, si no es torna a repetir el proces
+                row = placeToken(&board, col);
+                if (row != -1)
+                {
+                    break;
+                }
+                else
+                {
+                    printf("Columna plena!\n");
+                }
             }
         }
-#ifdef _WIN32
-        system("cls");
-#else
-        system("clear");
-#endif
+        clearScr();
         printBoard(&board);
         if (checkWin(&board, row, col))
         {
             printf("El jugador %d ha guanyat!\n", currentPlayer);
-            break;
+            return 0;
         }
         if (boardIsFull(&board))
         {
             printf("Empat! Tothom perd.\n");
-            break;
+            return 0;
         }
-        currentPlayer = currentPlayer == PLAYER1 ? PLAYER2 : PLAYER1;
     }
 }
 
-void getUserInput(int* var)
+void getUserInput(int* var, int minVal, int maxVal, bool decrement)
 {
     char inputBuffer[64];
-    while (1) {
+    while (true) {
         fgets(inputBuffer, 64, stdin);
 #ifdef _MSC_VER
-        if (sscanf_s(inputBuffer, "%d", var) == 1 && *var >= 1 && *var <= NUM_COLS) // sscanf_s pel compilador MSVC
+        if (sscanf_s(inputBuffer, "%d", var) == 1 && *var >= minVal && *var <= maxVal) // sscanf_s pel compilador MSVC
 #else
-        if (sscanf(inputBuffer, "%d", var) == 1 && *var >= 1 && *var <= NUM_COLS)
+        if (sscanf(inputBuffer, "%d", var) == 1 && *var >= minVal && *var <= maxVal)
 #endif
         {
-            (*var)--;
+            if (decrement) (*var)--;
             break;
         }
         else {
             printf("Introdueix un numero valid\n");
         }
     }
+}
+
+void clearScr()
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
 }
