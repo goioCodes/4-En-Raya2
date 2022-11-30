@@ -76,51 +76,52 @@ int numDigits(int n) {
 
 char* strreplace(char* orig, const char* rep, const char* with)
 {
-    // Reemplaça nomes la primera ocurrencia de rep en orig, amb with
-    char* result; // the return string
-    char* ins;    // the next insert point
-    char* tmp;    // varies
-    size_t len_rep;  // length of rep (the string to remove)
-    size_t len_with; // length of with (the string to replace rep with)
-    size_t len_front; // distance between rep and end of last rep
+    // Reemplaça només la primera ocurrència de rep en orig, amb with
+    // Codi adaptat de https://stackoverflow.com/questions/779875/what-function-is-to-replace-a-substring-from-a-string-in-c
+    char* result;
+    char* ins;    // apuntador a l'inici de rep a orig
+    char* tmp;    // apuntador a l'últim lloc on s'han copiat dades a l'string result
+    size_t len_rep;
+    size_t len_with;
+    size_t len_front;
 
-    // sanity checks and initialization
     if (!orig || !rep)
         return NULL;
     len_rep = strlen(rep);
     if (len_rep == 0)
-        return NULL; // empty rep causes infinite loop during count
+        return NULL;
     if (!with)
         with = "";
     len_with = strlen(with);
 
     tmp = result = malloc(strlen(orig) + (len_with - len_rep) + 1);
+    // result sempre apuntarà a l'inici de l'string. tmp s'anirà movent cap endevant per copiar el contingut de orig
+    // o with alternadament
 
     if (!result)
         return NULL;
 
-    //    tmp points to the end of the result string
-    //    ins points to the next occurrence of rep in orig
-    //    orig points to the remainder of orig after "end of rep"
     ins = strstr(orig, rep);
     if (ins)
     {
         len_front = ins - orig;
-        tmp = strncpy(tmp, orig, len_front) + len_front;
-        tmp = strcpy(tmp, with) + len_with;
-        orig += len_front + len_rep; // move to "end of rep"
+        tmp = strncpy(tmp, orig, len_front) + len_front; // Copia tot el que precedeix a rep al resultat, i mou tmp al final del resultat
+        tmp = strcpy(tmp, with) + len_with; // Copia with al resultat
+        orig += len_front + len_rep; // Mou orig al darrere de rep, saltan-lo
     }
     else
     {
         printf("Warning: no match.\n");
     }
 
-    strcpy(tmp, orig);
-    return result;
+    strcpy(tmp, orig); // copia la resta de orig al resultat
+    return result; // retorna l'apuntador que s'ha mantingut al principi del resultat
 }
 
 void insertConstantInSource(char** shaderSource, char* constName, int constValue)
 {
+    // Funció que permet insertar constants del preprocessador al codi de GLSL
+    // No s'utilitza. (Abans s'utilitzaba per definir el tamany d'un array però l'array s'ha canviat per una textura)
     char define[] = "#define ";
     char placeholder[] = " 1";
     char* oldstr = malloc((strlen(define) + strlen(constName) + strlen(placeholder) + 1) * sizeof(char));
@@ -155,12 +156,12 @@ bool checkShaderCompilation(unsigned int shader)
         char* infoLog = malloc(logLength);
         if (!infoLog)
         {
-            fprintf(stderr, "ERROR::SHADER::COMPILATION_FAILED\n");
+            fprintf(stderr, "ERROR SHADER COMPILATION_FAILED\n");
         }
         else
         {
             glGetShaderInfoLog(shader, logLength, NULL, infoLog);
-            fprintf(stderr, "ERROR::SHADER::COMPILATION_FAILED\n%s\n", infoLog);
+            fprintf(stderr, "ERROR SHADER COMPILATION_FAILED\n%s\n", infoLog);
             free(infoLog);
         }
         return false;
@@ -178,13 +179,13 @@ bool checkProgramLink(unsigned int shaderProgram)
         char* infoLog = malloc(logLength);
         if (!infoLog)
         {
-            fprintf(stderr, "ERROR::SHADER::PROGRAM::LINK_FAILED\n");
+            fprintf(stderr, "ERROR SHADER PROGRAM LINK_FAILED\n");
             return 0;
         }
         else
         {
             glGetProgramInfoLog(shaderProgram, logLength, NULL, infoLog);
-            fprintf(stderr, "ERROR::SHADER::PROGRAM::LINK_FAILED\n%s\n", infoLog);
+            fprintf(stderr, "ERROR SHADER PROGRAM LINK_FAILED\n%s\n", infoLog);
             free(infoLog);
         }
         return false;
@@ -195,6 +196,8 @@ bool checkProgramLink(unsigned int shaderProgram)
 
 unsigned int loadShader(const char* filepath, GLenum shaderType, int len, char** constantNames, int* constantValues)
 {
+    // Funció que realitza tot el procediment per crear un shader: carrega el codi font de l'arxiu a un string,
+    // introdueix les constants del preprocessador a l'string, compila el shader i comprova que la compilació sigui correcta.
     unsigned int shader;
 
     char* shaderSource = readShaderSource(filepath);
@@ -229,6 +232,7 @@ unsigned int loadShader(const char* filepath, GLenum shaderType, int len, char**
 
 unsigned int linkProgram(unsigned int* shaders, int n)
 {
+    // Funció que crea un programa a partir d'un array de shaders, i comprova que el programa s'hagi creat correctament
     unsigned int shaderProgram = glCreateProgram();
 
     for (int i = 0; i < n; i++)
@@ -247,6 +251,7 @@ unsigned int linkProgram(unsigned int* shaders, int n)
     return shaderProgram;
 }
 
+// Funcions per assignar els diferents tipus de uniforms
 void setUniformBool(unsigned int program, const char* name, bool value)
 {
     glUniform1i(glGetUniformLocation(program, name), value);

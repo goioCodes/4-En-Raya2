@@ -6,6 +6,7 @@
 void updateCamVectors(Camera* cam);
 void updateCamOrbitPosition(Camera* cam);
 
+// Desavantatge d'haver de proporcionar un vector cap amunt: la càmera no pot mirar cap amunt. En aquest cas no importa.
 const float PHI = -90.f;
 const float THETA = 0.f;
 const vec3 WORLDUP = { 0.f, 1.f, 0.f };
@@ -36,6 +37,9 @@ void cameraInitialize(Camera* cam, const vec3 position, const vec3 orbitCenter)
 
 void updateCamVectors(Camera* cam)
 {
+    // Aquesta funció calcula els vectors que formen la base del view space.
+    // La càmera mira cap a -z, per tant front en realitat va direcció contrària al vector de la base
+
     cam->front[0] = cosf(glm_rad(cam->phi)) * cosf(glm_rad(cam->theta));
     cam->front[1] = sinf(glm_rad(cam->theta));
     cam->front[2] = sinf(glm_rad(cam->phi)) * cosf(glm_rad(cam->theta));

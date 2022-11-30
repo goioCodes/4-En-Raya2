@@ -12,16 +12,18 @@ CylinderModel* generateCylinder(float radius, float height, int sectors)
 {
     // La funcio retorna l'array de vertexs i normals, i retorna la longitud de l'array pel parametre len
     // 
-    // Un cilindre té 2 tapes (bases) i segments rectangulars allargats verticalment entre les dues tapes (laterals).
-    // Numero de vertexs per cada array (notem que si un vertex te un vector normal diferent, es guarda per separat
+    // Un cilindre té 2 tapes (bases), formades per sectors triangulars
+    // i segments rectangulars allargats verticalment entre les dues tapes (laterals).
+    // Número de vèrtexs per cada array (notem que si un vertex te un vector normal diferent, es guarda per separat
     // encara que sigui la mateixa posicio. Tambe repetim el primer i ultim vertex per
     // tancar el GL_TRIANGLE_FAN o el GL_TRIANGLE_STRIP):
     //                                                                                                      6/2
-    // Base/Tapa del cilindre:                                                                              /|\
+    // Base/Tapa del cilindre (dibuixat amb GL_TRIANGLE_FAN):                                               /|\
     // A mes de tenir tants vertexs com sectors, repetim l'ultim i sumem el vertex central del cercle      5-1-3
     // (sectors + 1 + 1)                                                                                    \|/
     //                                                                                                       4
     int numVertBase = sectors + 2;
+    // Lateral (dibuixat amb GL_TRIANGLE_STRIP):
     // 4 vertexs per segment rectangular, on els 2 primers es comparteixen amb el triangle anterior        2-4-6
     // i els 2 ultims es comparteixen amb el següent                                                       |\|\|...
     // (2 * sectors + 2)                                                                                   1-3-5

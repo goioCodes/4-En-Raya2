@@ -5,17 +5,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int miniMaxGetPlay(Board* board)
+bool hardMode; // Variable global només per no haver de passar per paràmetre durant tot l'arbre
+
+int miniMaxGetPlay(Board* board, int maxdepth, bool difficulty)
 {
+    hardMode = difficulty;
     Node* root = createRootNodeFromBoard(board);
     int bestPlay;
-    if (nextMiniMaxLevel(root, 0, &bestPlay) == DBL_MAX)
+    if (nextMiniMaxLevel(root, maxdepth, -DBL_MAX, DBL_MAX, &bestPlay) == DBL_MAX)
     {
         printf("Error minimax.\n");
         eraseTree(root);
         return -1;
     }
-    //traverseTree(root->childs[2]->childs[4], 2);
+    //traverseTree(root, maxdepth);
     eraseTree(root);
     return bestPlay;
 }
@@ -32,7 +35,7 @@ Node* createRootNodeFromBoard(Board* board)
     root->board = *board;
     root->numChilds = getNumChilds(root);
     root->childCols = getFreeColumnsArray(board, root->numChilds);
-    root->childs = malloc(root->numChilds * sizeof(Node*)); // Pel node arrel sempre hi haura alguna opcio o ja s'haria acabat la partida
+    root->childs = malloc(root->numChilds * sizeof(Node*)); // Pel node arrel sempre hi haura alguna opcio o ja s'hauria acabat la partida
 
     return root;
 }
@@ -42,7 +45,7 @@ int getNumChilds(Node* node)
     return getFreeColumnsCount(&node->board);
 }
 
-Node* createNode(Node* parent, int col, int depth)
+Node* createNode(Node* parent, int col, double alpha, double beta, int depth)
 {
     Node* node = malloc(sizeof(Node));
     if (!node)
@@ -60,14 +63,14 @@ Node* createNode(Node* parent, int col, int depth)
     if (checkWin(&node->board, row, col)) // Jugada anterior ha guanyat
     {
         node->numChilds = 0;
-        node->value = - 4 * NUM_COLS * NUM_ROWS + node->board.turnCount; // Puntuació mínima doncs el jugador actual ha perdut
-    }
+        node->value = - 50 * NUM_COLS * NUM_ROWS + node->board.turnCount; // Puntuació mínima doncs el jugador actual ha perdut.
+    }                                                                     // Sumem el nombre de torns per afavorir perdre el més tard possible.
     else if (boardIsFull(&node->board)) // Empat
     {
         node->numChilds = 0;
         node->value = 0;
     }
-    else if (depth == MAXDEPTH) // Valoració general
+    else if (depth == 0) // Valoració general
     {
         node->numChilds = 0;
         node->value = heuristicFunction(node); // Important! La funció heurística calcularà el valor sempre des de la perspectiva
@@ -84,7 +87,7 @@ Node* createNode(Node* parent, int col, int depth)
             return NULL;
         }
 
-        node->value = nextMiniMaxLevel(node, depth, &node->bestPlay);
+        node->value = nextMiniMaxLevel(node, depth, alpha, beta, &node->bestPlay);
         if (node->value == DBL_MAX)
         {
             return NULL;
@@ -99,14 +102,15 @@ Node* createNode(Node* parent, int col, int depth)
     return node;
 }
 
-double nextMiniMaxLevel(Node* parent, int depth, int* bestPlay)
+double nextMiniMaxLevel(Node* parent, int depth, double alpha, double beta, int* bestPlay)
 {
-    // Aquesta funció genera la següent tanda de jugadas i retorna la puntuació màxima entre totes les possibilitats.
+    // Aquesta funció genera la següent tanda de jugades i retorna la puntuació màxima entre totes les possibilitats.
     // Recordem que les puntuacions de cada node estan calculades des del punt de vista de qui juga en aquell moment.
-    double bestScore = -4 * NUM_COLS * NUM_ROWS - 1;
+    // Aparentment aquesta variació de l'algoritme minimax es diu negamax.
+    double bestScore = -50 * NUM_COLS * NUM_ROWS - 1;
     for (int i = 0; i < parent->numChilds; i++)
     {
-        parent->childs[i] = createNode(parent, parent->childCols[i], depth + 1);
+        parent->childs[i] = createNode(parent, parent->childCols[i], -beta, -alpha, depth - 1);
         if (!parent->childs[i])
         {
             printf("Error creant arbre al nivell %d.\n", depth);
@@ -129,6 +133,26 @@ double nextMiniMaxLevel(Node* parent, int depth, int* bestPlay)
         // max(-max(-x, -y), -max(-z, -w)) = max(min(x, y), min(z, w))
         // Per tant es el mateix que fer minimax però sense haver de comprovar en el torn de qui ens trobem, ni
         // haver d'escriure una funció heurística que tingui en compte a qui li toca.
+        alpha = max(alpha, bestScore);
+        if (alpha >= beta)
+        {
+            parent->numChilds = i + 1;
+            break;
+        }
+        // Implementar alpha-beta pruning d'aquesta forma és una mica més confús. Suposem que partim des d'un node de la màquina on
+        // hem acabat d'explorar la primera branca i el node fill té un valor de 2 (per l'humà). Fent la negació,
+        // això és una puntuació de -2 per la màquina. A partir d'ara aquesta es la nostra puntuació mínima garantitzada de la màquina
+        // alpha.
+        // Passem ara a explorar el segon node, al que li comunicarem que pot parar d'explorar si la seva puntuació supera 2, doncs
+        // fent la negació, aquesta puntuació és pitjor que -2 i per tant la jugada queda descartada en favor de la ja explorada.
+        // Per fer-ho, passem el valor de -alpha (2) com a cota superior al node fill, i mirem que el valor del node mai superi
+        // aquest valor. Això és el mateix que dir que -alpha = beta2 pel node fill i deixar de buscar si alpha2 >= beta2. Així
+        // doncs beta2 és la puntuació màxima garantitzada de l'humà (és a dir, qualsevol puntuació superior serà descartada pel contrari).
+        // Si baixem un nivell més, el node pare va actualitzant alpha2 amb les puntuacions màximes, que tornen a estar invertides,
+        // i ara s'ha d'indicar als nodes fill que la seva puntuació no pot superar -alpha2.
+        // Per veure que passa el mateix amb beta, i que li hem de passar -beta = alpha2 al node fill, fixem-nos que la puntuació
+        // màxima garantitzada de la màquina beta, quan canviem el signe de les valoracions, passa a ser la putuació mínima garantitzada
+        // per l'humà alpha2 en un node superior, i per tant qualsevol puntuació inferior no afectarà al resultat del node superior.
     }
 
     return bestScore;
@@ -136,12 +160,12 @@ double nextMiniMaxLevel(Node* parent, int depth, int* bestPlay)
 
 void traverseTree(Node* node, int depth)
 {
-    for (int i = 0; i < depth; i++) {
-        printf("  ");
+    for (int i = depth; i > 0; i--) {
+        printf("    ");
     }
     printf("%d\n", (int)node->value);
     for (int i = 0; i < node->numChilds; i++) {
-        traverseTree(node->childs[i], depth + 1);
+        traverseTree(node->childs[i], depth - 1);
     }
 }
 
@@ -158,25 +182,25 @@ void eraseTree(Node* parent)
 
 double heuristicFunction(Node* node)
 {
-    // Ja hem definit que un node on la partida s'ha perdut té puntuació -NUM_COLS*NUM_ROWS. Perdre la partida en el torn
-    // següent tindrà un valor menys negatiu quant més tard es perdi. Multipliquem el mínim per 2 per deixar espai als
-    // valors que s'assignen quan no s'ha arribat a cap posició final. Així la distribució (no exhaustiva) de valors queda:
-    // [- 2 NUM_ROWS*NUM_COLS, - NUM_ROWS*NUM_COLS]: Partida perduda en un dels torns següents.
-    // 
-    // Abans d'això però, comprovem si la partida es pot guanyar en el pròxim moviment. Llavors la puntuació serà
-    // NUM_COLS*NUM_ROWS penalitzada pel temps que es trigui en guanyar.
+    // Perdre la partida tindrà un valor menys negatiu quant més tard es perdi. De forma similar, guanyar serà
+    // més positiu quant més aviat es guanyi. Diferenciem els nodes que tenen un estat final de la partida
+    // donant-lis un valor molt extrem, com és el cas de 50 * NUM_COLS * NUM_ROWS. Així no hi ha possibilitat de que
+    // aquestes puntuacions es solapin amb les valoracions heurístiques de més endevant.
+
+    // Comprovem si la partida es pot guanyar en el pròxim moviment. Llavors la puntuació serà màxima
+    // penalitzada pel temps que es trigui en guanyar.
 
     for (int j = 0; j < NUM_COLS; j++)
     {
         if (moveWouldWin(&node->board, j))
         {
             // Volem escollir el moviment que ens permeti guanyar més ràpid. Per tant restem el número de torns.
-            // Per assegurar-nos que la puntuació es positiva i major a la resa de casos (guanyar sempre és preferible),
-            // sumem el nombre de torns màxims per 2
-            return 4 * NUM_COLS * NUM_ROWS - node->board.turnCount;
+            return 50 * NUM_COLS * NUM_ROWS - node->board.turnCount;
         }
     }
 
+    // Mirem ara les posicions on es pot perdre. Per fer-ho avancem el torn de forma que la peça col·locada sigui la
+    // del contrari
     node->board.turnCount++;
     int count = 0;
     int dangerCol;
@@ -189,24 +213,22 @@ double heuristicFunction(Node* node)
         }
     }
     node->board.turnCount--;
-    if (count >= 2)
+    if (count >= 2) // Si existeixen 2 columnes on el contrari pot fer 4 en ratlla, partida perduda.
     {
-        return -4 * NUM_COLS * NUM_ROWS + node->board.turnCount + 1;
+        return -50 * NUM_COLS * NUM_ROWS + node->board.turnCount + 1;
     }
-    else if (count == 1)
+    else if (count == 1) // Si només existeix una, col·locar peça per bloquejar-la pot provocar que es perdi de totes formes
     {
         Board temp = node->board;
         placeToken(&temp, dangerCol);
         if (moveWouldWin(&temp, dangerCol))
         {
-            return -4 * NUM_COLS * NUM_ROWS + node->board.turnCount + 1;
+            return -50 * NUM_COLS * NUM_ROWS + node->board.turnCount + 1;
         }
     }
 
-    // Mirem ara les posicions on es pot perdre. Per fer-ho avancem el torn de forma que la peça col·locada sigui la
-    // del contrari
-
-    // getWeightedSum pot retornar, en casos extrems, valors en l'interval [-6 * NUM_ROWS, NUM_ROWS]. Aquest interval serà
-    // disjunt amb l'interval dels moviments guanyadors sempre i quan NUM_COLS >= 2, però aquesta precaució no és necessària.
-    return getWeightedSum(&node->board);
+    if (hardMode) // Valoracions del tauler
+        return getWeightedSum(&node->board) + allPossibleLinesSum(&node->board);
+    else
+        return getWeightedSum(&node->board);
 }

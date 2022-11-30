@@ -6,6 +6,8 @@
 
 SkyboxModel* generateSkybox()
 {
+    // Els vertexs d'una skybox són simplement un cub centrat a l'origen.
+    // No calen texture coordinates ja que la pròpia posició del vèrtex (interpolada) és l'index del cubemap
     SkyboxModel* skybox = malloc(sizeof(SkyboxModel));
     if (!skybox)
     {
@@ -74,6 +76,8 @@ SkyboxModel* generateSkybox()
 
 void drawSkybox(SkyboxModel* skyboxM, unsigned int program, unsigned int cubemap)
 {
+    // L'skybox no requereix model matrix. Els vèrtexs sempre són a l'origen, i donat que la view matrix que s'utilitza
+    // no té components de traslació, provoca que la càmara també sigui a l'origen.
     glDepthMask(GL_FALSE);
 
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);

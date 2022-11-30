@@ -13,26 +13,27 @@ void initTextRenderer(TextRenderer* ren, float scr_width, float scr_height)
 	FT_Library ft;
 	if (FT_Init_FreeType(&ft))
 	{
-		printf("ERROR::FREETYPE: Could not init FreeType Library\n");
+		printf("ERROR FREETYPE: No s'ha pogut inicialitzar la llibreria FreeType\n");
 		return;
 	}
 
 	FT_Face face;
 	if (FT_New_Face(ft, "Fonts/arial.ttf", 0, &face))
 	{
-		printf("ERROR::FREETYPE: Failed to load font");
+		printf("ERROR FREETYPE: No s'ha pogut carregar la font");
 		return;
 	}
 
 	FT_Set_Pixel_Sizes(face, 0, 48);
 
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	FT_GlyphSlot slot = face->glyph;
 
+	// Per cada caracter ASCII a partir del 32, carreguem el caracter, creem una textura i la guardem juntament amb la informació
+	// del caracter a l'array characterSet
 	for (unsigned char c = 32; c < 128; c++)
 	{
-		// load character glyph 
 		if (FT_Load_Char(face, c, FT_LOAD_RENDER))
 		{
 			printf("ERROR::FREETYTPE: Failed to load Glyph");
@@ -41,7 +42,6 @@ void initTextRenderer(TextRenderer* ren, float scr_width, float scr_height)
 
 		FT_Render_Glyph(slot, FT_RENDER_MODE_SDF);
 
-		// generate texture
 		unsigned int texture;
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
@@ -56,12 +56,12 @@ void initTextRenderer(TextRenderer* ren, float scr_width, float scr_height)
 			GL_UNSIGNED_BYTE,
 			face->glyph->bitmap.buffer
 		);
-		// set texture options
+
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		// now store character for later use
+
 		Character character = {
 			.textureID = texture,
 			.size = {face->glyph->bitmap.width, face->glyph->bitmap.rows},
@@ -74,7 +74,7 @@ void initTextRenderer(TextRenderer* ren, float scr_width, float scr_height)
 	FT_Done_Face(face);
 	FT_Done_FreeType(ft);
 
-	glm_ortho(0.0f, scr_width, 0.0f, scr_height, -2.f, 2.f, ren->projectionOrtho);
+	glm_ortho(0.0f, scr_width, 0.0f, scr_height, -2.f, 2.f, ren->projectionOrtho); // Per projectar el text no s'utilitza perspectiva
 
 	float verts[] = {
 		0.f, 1.f,  0.f, 0.f,
@@ -84,7 +84,7 @@ void initTextRenderer(TextRenderer* ren, float scr_width, float scr_height)
 		0.f, 1.f,  0.f, 0.f,
 		1.f, 0.f,  1.f, 1.f,
 		1.f, 1.f,  1.f, 0.f
-	}; // Conte els vertexs d'un quad 2D i les texture coordinates
+	}; // Conté els vèrtexs d'un quad 2D i les texture coordinates
 
 	glGenBuffers(1, &(ren->VBO));
 	glBindBuffer(GL_ARRAY_BUFFER, ren->VBO);
@@ -107,7 +107,7 @@ void textUpdateScreenSize(TextRenderer* ren, float scr_width, float scr_height)
 void renderTextUI(unsigned int program, const char* text, float x, float y, float scale, vec3 color, vec3 outline, TextRenderer* ren)
 {
 	glDepthMask(GL_FALSE);
-    // activate corresponding render state
+
     setUniformVec3(program, "textColor", color);
 	setUniformVec3(program, "outlineColor", outline);
     setUniformMat4(program, "projection", false, ren->projectionOrtho);
@@ -117,27 +117,32 @@ void renderTextUI(unsigned int program, const char* text, float x, float y, floa
     glBindVertexArray(ren->VAO);
 
 	mat4 model;
-    // iterate through all charactersstd::string::const_iterator c;
     for (const char* c = text; *c ; c++)
     {
+		// Extraiem la informació de la lletra actual
         Character ch = ren->characterSet[*c - 32];
 
+		// Calculem l'extrem inferior esquerre del quad que conté la textura de la lletra
         float xpos = x + ch.bearing[0] * scale;
         float ypos = y - (ch.size[1] - ch.bearing[1]) * scale;
 
+		// Calculem l'amplada i alçada del quad
         float w = ch.size[0] * scale;
         float h = ch.size[1] * scale;
-        // update VBO for each character
+
+		// Creem la model matrix
 		glm_translate_make(model, (vec3) { xpos, ypos, 0.f });
 		glm_scale(model, (vec3) { w, h, 1.f });
-        // render glyph texture over quad
+
+		// Vinculem la textura i dibuixem el quad
         glBindTexture(GL_TEXTURE_2D, ch.textureID);
-        // update content of VBO memory
+
 		setUniformMat4(program, "model", false, model);
-        // render quad
+
         glDrawArrays(GL_TRIANGLES, 0, 6);
-        // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-        x += (ch.advance >> 6) * scale; // bitshift by 6 to get value in pixels (2^6 = 64)
+
+        // Avancem la posició del cursor la quantitat indicada. El valor ve donat en unitats de 1/64 pixels
+        x += (ch.advance >> 6) * scale; // S'ha de dividir per 64 el valor donat (2^6 = 64)
     }
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);

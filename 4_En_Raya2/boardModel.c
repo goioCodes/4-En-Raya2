@@ -22,6 +22,9 @@ void getCenters(float cents[][NUM_COLS][2], float colrowsize)
 
 float* genDistanceField(float cents[][NUM_COLS][2], float tabWidth, float tabHeight, int textureWidth, int textureHeight)
 {
+    // Un distance field es una textura on cada component conté la distància a la vora d'una imatge. En aquest cas
+    // conté la distància al centre del tauler més proper. Els pixels massa propers a un centre seran descartats pel fragment shader.
+
     float* arr = malloc(textureWidth * textureHeight * sizeof(float));
     if (!arr)
     {
@@ -61,6 +64,9 @@ float* genDistanceField(float cents[][NUM_COLS][2], float tabWidth, float tabHei
 
 BoardModel* generateBoard(float faceSeparation, float colrowSize, float legSize, float legWidth, float holeRadius)
 {
+    // La funció retorna l'struct que conté els vertexs del tauler, les normals i les texture coordinates, a més de la
+    // informació necessària per dibuixar-lo
+
     // El tauler consta de dues cares principals front/back, dues tapes laterals left/right, una tapa inferior bottom
     // i dues pates legs
     //
@@ -173,12 +179,9 @@ void drawBoard(BoardModel* boardM, unsigned int program, mat4 model, mat4 view, 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, boardM->dfTexture);
 
-    vec3 scale;
-    glm_decompose_scalev(model, scale);
     setUniformf(program, "distThreshold", boardM->holeRadius);
-
-    setUniformBool(program, "checkRadius", true);
-    glBindVertexArray(boardM->VAO);
+    setUniformBool(program, "checkRadius", true); // Per les cares principals es descarten pixels a dins del radi dels forats
+    glBindVertexArray(boardM->VAO); 
     glDrawArrays(GL_TRIANGLES, 0, 12);
 
     setUniformBool(program, "checkRadius", false);
@@ -189,12 +192,12 @@ void drawBoard(BoardModel* boardM, unsigned int program, mat4 model, mat4 view, 
     glm_rotate_z(cylRotation, (float)M_PI_2, cylRotation);
 
     mat4 cylinderModel;
-    glm_translate_make(cylinderModel, (vec3) { -boardM->legSeparation / 2, -0.5f * scale[1] , 0 });
+    glm_translate_make(cylinderModel, (vec3) { -boardM->legSeparation / 2, -0.25f, 0 });
     glm_mat4_mul(cylinderModel, cylRotation, cylinderModel);
     glm_mat4_mul(model, cylinderModel, cylinderModel);
     drawCylinder(boardM->legM, program, cylinderModel, NULL);
 
-    glm_translate_make(cylinderModel, (vec3) { boardM->legSeparation / 2, -0.5f * scale[1], 0 });
+    glm_translate_make(cylinderModel, (vec3) { boardM->legSeparation / 2, -0.25f, 0 });
     glm_mat4_mul(cylinderModel, cylRotation, cylinderModel);
     glm_mat4_mul(model, cylinderModel, cylinderModel);
     drawCylinder(boardM->legM, program, cylinderModel, NULL);

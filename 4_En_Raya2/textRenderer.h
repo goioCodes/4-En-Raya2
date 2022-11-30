@@ -1,13 +1,13 @@
 #ifndef __TEXTRENDERER_H_
 #define __TEXTRENDERER_H_
-
 #include <cglm/cglm.h>
 
+// Per saber el que signifiquen les mètriques de cada lletra, veure https://freetype.org/freetype2/docs/tutorial/step2.html
 typedef struct {
-    unsigned int textureID;  // ID handle of the glyph texture
-    ivec2   size;       // Size of glyph
-    ivec2   bearing;    // Offset from baseline to left/top of glyph
-    unsigned int advance;    // Offset to advance to next glyph
+    unsigned int textureID;
+    ivec2   size;       // Tamany de la lletra
+    ivec2   bearing;    // Desplaçament horitzontal/vertical des de l'origen fins al costat esquerre/superior de la lletra
+    unsigned int advance;    // Desplaçament de l'origen per la següent lletra
 } Character;
 
 typedef struct {

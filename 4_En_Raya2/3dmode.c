@@ -62,22 +62,33 @@ const char* skyboxFacesPath3[] = {
 	"Textures/skybox3/nz.png",
 };
 
+// Tamany inicial de la finestra
 #define SCR_WIDTH_INIT 800
 #define SCR_HEIGHT_INIT 600
 
+// Posició inicial de la càmera i punt al qual orbita
 const vec3 initialCameraPos = { 0.f, 1.f, 3.f };
 const vec3 cameraOrbitCenter = { 0.f, 1.f, 0.f };
 
+// Posició x,y i escala del text
 const vec3 textParams = { 25.f, 25.f, 1.f };
 
+// Llum direccional i posició del llum puntual (només la taula utilitza el llum puntual)
 #define lightDir (vec3){ -1.5f, -3.0f, -1.5f }
 #define lightPos (vec3){ 1.5f, 3.f, 1.5f }
+
+// Escala del tauler
 #define boardScale (vec3){ 0.5f, 0.5f, 0.5f }
 
+// Altura on apareixen les fitxes
 const float tokenSpawnHeight = 6;
 
+// Gravetat
 const float gravity = 30.0;
 
+// Els següents structs guarden l'estat de l'aplicació que necessita ser accedit per altres funcions, principalment
+// pels callbacks de les tecles, que no poden rebre paràmetres personalitzats, però tambè el processament de física
+// que forma part del loop principal.
 typedef struct {
 	int cursorInd;
 	float cursorPos;
@@ -118,6 +129,7 @@ typedef struct {
 } Resources;
 
 void processPhysics(Resources* resources, float centers[][NUM_COLS][2], float fixedDeltaTime);
+void queueComputerPlay(Resources* resources, float waitTime);
 void placeToken3D(Resources* resources, int col);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -128,6 +140,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 unsigned int loadTexture(const char* path);
 unsigned int loadCubemap(const char** faces);
 
+// Materials del tauler, fitxes i cursor
 Material boardMat = {
 		.diffuse = {0.f, 0.6f, 1.f},
 		.specular = {.5f,.5f,.5f},
@@ -152,17 +165,19 @@ Material cursorMat = {
 	.shininess = 32.f
 };
 
+// Color i intensitat de la llum direccional
 DirLight dirLight = {
 	.ambient = { 0.2f, 0.2f, 0.2f },
 	.diffuse = { 1.f, 1.f, 1.f },
 	.specular = { 1.0f, 1.0f, 1.0f },
 };
 
+// Freqüència amb que es crida la funció de físiques
 const int fixedPhysicsStepsPS = 120;
 
-int main3d(Token firstPlayer, bool twoplayers, int skybox)
+int main3d(Token firstPlayer, bool twoplayers, int skybox, int maxdepth, bool difficulty)
 {
-	// Inicialització de GLFW
+	// Inicialització de GLFW, llibreria que crea la finestra i el "contexte" de OpenGL (framebuffer, depth buffer...)
 	glfwInit();
 	// Configuració de GLFW
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -170,7 +185,7 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Creació de la finestra
-	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH_INIT, SCR_HEIGHT_INIT, "Epic window", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH_INIT, SCR_HEIGHT_INIT, "4 en ratlla", NULL, NULL);
 	if (!window)
 	{
 		printf("No s'ha pogut crear la finestra");
@@ -222,10 +237,12 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	glfwSetScrollCallback(window, scroll_callback);
-	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); // Per càmera en primera persona
 
 	//------------SHADERS--------------
 
+	// Per crear un programa de shaders s'han de combinar un vertex shader i un fragment shader.
+	// Els dos shaders es guarden a l'array i després es passen a la funció que els combina.
 	unsigned int shaders[2];
 	// VERTEX SHADER GENERAL
 	shaders[0] = loadShader(vertexShaderPath, GL_VERTEX_SHADER, 0, NULL, NULL);
@@ -360,6 +377,7 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 
 	//----------SHADER SETUP-----------
 
+	// Configurem els uniforms (paràmetres dels shaders) que no canvien durant tota l'execució
 	glUseProgram(shaderProgramTable);
 	setUniformi(shaderProgramTable, "diffuseMap", 0);
 	setUniformi(shaderProgramTable, "normalMap", 1);
@@ -414,13 +432,20 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 		return -1;
 	}
 
+	// Posició inicial del cursor
 	resources.gameState.cursorPos = boardM->centers[0][resources.gameState.cursorInd][0];
 
 	float fixedDeltaTime = 1.0f / fixedPhysicsStepsPS;
 	float lastPhysicsTime = 0.0f;
 
-
+	// Moure cursor al centre de la finestra
 	glfwSetCursorPos(window, resources.lastX, resources.lastY);
+
+	// Si comença a jugar la màquina, demanar que jugui
+	if (getCurrentPlayer(&resources.gameState.board) == PLAYER2 && !resources.twoPlayerMode)
+	{
+		queueComputerPlay(&resources, 0.0f);
+	}
 
 	// Render loop
 	// +------/!\------+------/!\------+------/!\------+------/!\------+------/!\------+------/!\------+------/!\------+------/!\------+
@@ -435,16 +460,18 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 		glfwPollEvents();
 		processInput(window);
 
+		// Els càlculs físics s'executen a ritme constant per que no depenguin dels FPS
 		if ((currentFrame - lastPhysicsTime) >= fixedDeltaTime)
 		{
-			// Passar fixedDeltaTime per evitar salts amb pocs FPS?
+			// Passar fixedDeltaTime per evitar salts amb pocs FPS
 			processPhysics(&resources, boardM->centers, fixedDeltaTime);
 			lastPhysicsTime = currentFrame;
 		}
 
+		// Jugada de la màquina. Temps d'espera per permetre que caigui la fitxa anterior.
 		if (resources.gameState.computerWaiting && (currentFrame - resources.gameState.computerWaitStartTime) >= resources.gameState.computerWaitDuration)
 		{
-			int col = miniMaxGetPlay(&resources.gameState.board);
+			int col = miniMaxGetPlay(&resources.gameState.board, maxdepth, difficulty);
 			if (col == -1)
 				return -1;
 			placeToken3D(&resources, col);
@@ -453,6 +480,13 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 
 		glClearColor(0.8f, 0.8f, 0.8f, 1.f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Petita explicació del procés de renderitzat:
+		// Tenim 3 matrius anomenades model, view i projection.
+		// Model: S'encarrega de transformar les coordenades dels vèrtexs de l'espai local a l'espai global (els col·loca al món respecte un nou origen)
+		// View: Transforma els vèrtexs globals a l'espai de visió, és a dir, els deixa tal i com es veuen des de la posició de la càmera
+		// Projection: Projecta els vèrtexs del view space a les coordenades 2D de la pantalla. Pot ser ortogràfica o en perspectiva
+		// Multiplicant les 3 matrius s'aconsegueix la transformació completa.
 
 		// VIEW MATRIX
 		mat4 view;
@@ -464,6 +498,7 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 
 		// LIGHT DIRECTION TO VIEW SPACE
 		glm_mat4_mulv3(view, lightDir, 0.0f, dirLight.direction);
+		// Els càlculs d'il·luminació del fragment shader es fan a view space, per tant li passarem directament la direcció transformada
 
 		// MODEL MATRIX
 		mat4 model;
@@ -475,20 +510,20 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 		// Vertex:                   Fragment:
 		// view, projection          skybox
 		setUniformMat4(shaderProgramSkybox, "projection", GL_FALSE, projection);
-		mat3 upperLeftView;
-		glm_mat4_pick3(view, upperLeftView);
+		mat3 upperLeftView;                   // La skybox sempre ha de quedar-se quieta sense importar el moviment de la càmera. 
+		glm_mat4_pick3(view, upperLeftView);  // Per aconseguir-ho ens quedem només amb les rotacions de la view matrix, descartant el desplaçament
 		mat4 skyView = GLM_MAT4_IDENTITY_INIT;
 		glm_mat4_ins3(upperLeftView, skyView);
 		setUniformMat4(shaderProgramSkybox, "view", GL_FALSE, skyView);
 
-		drawSkybox(skyboxM, shaderProgramSkybox, skyboxCubemap);
+		drawSkybox(skyboxM, shaderProgramSkybox, skyboxCubemap); // Les funcions drawObject assignen els uniforms que reben com a paràmetre
 
 
 		// DIBUIXANT: TAULER
 		glUseProgram(shaderProgramBoard);
 		// Uniforms del shader:
 		// Vertex:                   Fragment:
-		// model, view, projection   material, dirLight, viewCenters, radius, checkRadius
+		// model, view, projection   material, dirLight, distanceField, distThreshold, checkRadius
 		setUniformMat4(shaderProgramBoard, "projection", GL_FALSE, projection);
 		setUniformMat4(shaderProgramBoard, "view", GL_FALSE, view);
 		glm_scale_make(model, boardScale);
@@ -496,7 +531,7 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 		setUniformDirLight(shaderProgramBoard, "dirLight", &dirLight);
 		
 		// Aquesta funcio configura els uniforms restants
-		// model, material, radius, checkRadius, viewCenters
+		// model, material, distanceField, distThreshold, checkRadius
 		drawBoard(boardM, shaderProgramBoard, model, view, &boardMat);
 
 
@@ -550,7 +585,7 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 		setUniformMat4(shaderProgramTable, "projection", GL_FALSE, projection);
 		setUniformMat4(shaderProgramTable, "view", GL_FALSE, view);
 		glm_scale_make(model, boardScale);
-		glm_translate(model, (vec3) { 0.f, 0.5f * cosf(2 * (float)M_PI / 3) - 0.5f * boardScale[1], 0.f });
+		glm_translate(model, (vec3) { 0.f, 0.5f * cosf(2 * (float)M_PI / 3) - 0.25f, 0.f }); // Posició y de la taula: Alçada de la pota del tauler (fins al circumcentre), desplaçat cap abaix igual que la pota
 		glm_rotate_x(model, -(float)M_PI_2, model);
 		glm_scale(model, (vec3){ 5.f, 5.f, 1.f });
 		setUniformVec3(shaderProgramTable, "viewPos", resources.camera.position);
@@ -563,6 +598,7 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 		glUseProgram(shaderProgramText);
 		renderTextUI(shaderProgramText, resources.textBox, textParams[0], textParams[1], textParams[2], (vec3) { 0.f, 0.f, 0.f }, (vec3) { 1.f, 1.f, 1.f }, & resources.textRender);
 
+		// Totes les comandes s'envien al framebuffer "de darrere". Un cop acabat el nou frame, el framebuffer de darrere es posa al davant i s'ensenya per pantalla
 		glfwSwapBuffers(window);
 	}
 
@@ -572,6 +608,8 @@ int main3d(Token firstPlayer, bool twoplayers, int skybox)
 
 void processPhysics(Resources* resources,  float centers[][NUM_COLS][2], float fixedDeltaTime)
 {
+	// Funció encarregada de moure suaument la càmera i el cursor, i fer caure les fitxes.
+
 	GameState* gs = &resources->gameState;
 	gs->cursorPos = glm_lerp(gs->cursorPos, centers[0][gs->cursorInd][0], 15.f * fixedDeltaTime);
 	
@@ -648,6 +686,8 @@ void placeToken3D(Resources* resources, int col)
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
+	// Accions per les tecles del teclat. A i D moure cursor. Espai col·locar fitxa.
+
 	if (key == GLFW_KEY_1 && action == GLFW_PRESS)
 	{
 		int i;
@@ -679,16 +719,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void mouse_callback(GLFWwindow* window, double xposd, double yposd)
 {
+	// Acció de desplaçar el ratolí. Mantenir pulsat botó dret i arrossegar per orbitar
+
 	Resources* resources =  glfwGetWindowUserPointer(window);
 	float xpos = (float)xposd;
 	float ypos = (float)yposd;
 
 	float xoffset = xpos - resources->lastX;
-	float yoffset = resources->lastY - ypos; // les coordenades es prenen des del costat superior esquerra
+	float yoffset = resources->lastY - ypos; // les coordenades a la finestra es prenen des del costat superior esquerre (y+ cap abaix)
 	resources->lastX = xpos;
 	resources->lastY = ypos;
 
-	//cameraProcessMouseMovement(&resources->camera, xoffset, yoffset);
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
 	{
 		cameraProcessMouseMovement(&resources->camera, xoffset, yoffset);
@@ -697,6 +738,8 @@ void mouse_callback(GLFWwindow* window, double xposd, double yposd)
 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
+	// Acció dels botons del ratolí
+
 	Resources* resources = glfwGetWindowUserPointer(window);
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 		resources->draggingCamera = true;
@@ -706,12 +749,16 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
+	// Acció de la roda del ratolí. Fer scroll per aumentar o disminuir el zoom
+
 	Resources* resources = glfwGetWindowUserPointer(window);
 	cameraProcessScroll(&resources->camera, (float)yoffset);
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
+	// Acció al redimensionar la finestra. Es canvien les matrius de projecció
+
 	Resources* resources = glfwGetWindowUserPointer(window);
 	glViewport(0, 0, width, height);
 	resources->scr_width = width;
@@ -725,7 +772,7 @@ void processInput(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 
-	/*
+	/* // Per moure càmera de primera persona lliurement
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
 		cameraProcessKeyborad(&resources->camera, FORWARD, resources->deltaTime);
@@ -747,6 +794,8 @@ void processInput(GLFWwindow* window)
 
 unsigned int loadTexture(const char* path)
 {
+	// Funció per carregar una textura a partir d'un arxiu
+
 	unsigned int textureID;
 	glGenTextures(1, &textureID);
 
@@ -787,6 +836,10 @@ unsigned int loadTexture(const char* path)
 
 unsigned int loadCubemap(const char** faces)
 {
+	// Funció per carregar un cubemap. Un cubemap son 6 textures diferents que s'assignen a les cares d'un cub
+	// Per indexar el cubemap es necessita un vector director 3D que surt del centre del cub, agafant el color que talli
+	// amb la recta del vector director.
+
 	unsigned int textureID;
 	glGenTextures(1, &textureID);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);

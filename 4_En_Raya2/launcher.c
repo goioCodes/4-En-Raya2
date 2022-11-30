@@ -13,6 +13,8 @@ int main()
     int skybox = 3;
     int twoPlayers = 0;
     int firstPlayer = PLAYER1;
+    int maxdepth = 8;
+    int hardMode = 1;
     
     int ans;
     while (true)
@@ -23,8 +25,10 @@ int main()
         if (mode3D) printf("    2. Escenari: %s\n", skyboxName(skybox));
         printf("    3. Mode 2 jugadors: %s\n", twoPlayers ? "Activat" : "Desactivat");
         if (!twoPlayers) printf("    4. Comenca la partida: %s\n", firstPlayer == 1 ? "Tu" : "La maquina");
-        printf("Introdueix un dels numeros per canviar la corresponent opcio, o introdueix 5 per comencar.\n");
-        getUserInput(&ans, 1, 5, false);
+        if (!twoPlayers) printf("    5. Profunditat de l'arbre: %d\n", maxdepth);
+        if (!twoPlayers) printf("    6. Nivell (lleugerament mes) dificil: %s\n", hardMode ? "Activat" : "Desactivat");
+        printf("Introdueix un dels numeros per canviar la corresponent opcio, o introdueix 7 per comencar.\n");
+        getUserInput(&ans, 1, 7, false);
 
         clearScr();
         if (ans == 1)
@@ -56,15 +60,27 @@ int main()
             printf("        2. La maquina\n");
             getUserInput(&firstPlayer, 1, 2, false);
         }
+        else if (ans == 5)
+        {
+            printf("Introdueix la profunditat de l'arbre 2-12. (Perill: profunditat 12 requereix >11 GB de RAM)\n");
+            getUserInput(&maxdepth, 2, 12, false);
+        }
+        else if (ans == 6)
+        {
+            printf("Nivell de dificulat desitjat?\n");
+            printf("        1. Normal\n");
+            printf("        2. Dificil\n");
+            getUserInput(&hardMode, 1, 2, true);
+        }
         else
         {
             if (mode3D)
             {
-                return main3d(firstPlayer, twoPlayers, skybox);
+                return main3d(firstPlayer, twoPlayers, skybox, maxdepth, hardMode);
             }
             else
             {
-                return mainConsole(firstPlayer, twoPlayers);
+                return mainConsole(firstPlayer, twoPlayers, maxdepth, hardMode);
             }
         }
     }

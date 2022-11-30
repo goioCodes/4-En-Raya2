@@ -8,6 +8,8 @@
 
 TableModel* generateTable()
 {
+	// Els vèrtexs de la taula no necessiten normals, ja que aquestes s'extreuen del normal map, una textura que dona
+	// un valor diferent de la normal a cada pixel
 	TableModel* table = malloc(sizeof(TableModel));
 	if (!table)
 	{
@@ -43,6 +45,7 @@ TableModel* generateTable()
 
 void drawTable(TableModel* table, unsigned int program, mat4 model, TexturedMaterial* material)
 {
+	// La taula utilitza textures en comptes d'un únic color.
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, material->diffuseTex);
 	glActiveTexture(GL_TEXTURE1);

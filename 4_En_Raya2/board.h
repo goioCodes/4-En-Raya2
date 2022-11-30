@@ -27,12 +27,12 @@ int placeToken(Board* board, int col);
 
 bool boardIsFull(Board* board);
 bool checkWin(Board* board, int row, int col);
-bool checkWinDirection(Board* board, int row, int col, int* direction);
-Token checkWinFull(Board* board);
+int countLinesDirection(Board* board, int row, int col, int* direction, bool checkBack, bool breakOnColorChange, bool resetOnEmpty, bool breakOnWall, Token* detectedPlayer);
 
 int getFreeColumnsCount(Board* board);
 int* getFreeColumnsArray(Board* board, int freeCount);
 
 int getWeightedSum(Board* board);
+int allPossibleLinesSum(Board* board);
 bool moveWouldWin(Board* board, int col);
 #endif

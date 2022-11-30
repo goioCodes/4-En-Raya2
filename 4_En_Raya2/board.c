@@ -9,6 +9,13 @@
 #define lastPlayer(board) (board->turnCount % 2 == 0) + 1
 #define currentPlayer(board) board->turnCount % 2 + 1
 
+const int directions[][2] = {
+    { -1, 1 },
+    {  0, 1 },
+    {  1, 1 },
+    {  1, 0 }
+};
+
 static void printHBar();
 
 Token getLastPlayer(Board* board)
@@ -42,52 +49,104 @@ bool checkWin(Board* board, int row, int col)
 {
     // La funcio comprova si l'ultim moviment ha guanyat la partida. Nomes es comproven les 4 direccions (2 ortogonals, 2 diagonals)
     // al voltant de l'ultima fitxa colocada, i fins a 3 caselles en cada direccio (maxim de 7 caselles)
-
-    return checkWinDirection(board, row, col, (int[2]) { 1, 0 }) || checkWinDirection(board, row, col, (int[2]) { 0, 1 }) ||
-        checkWinDirection(board, row, col, (int[2]) { 1, 1 }) || checkWinDirection(board, row, col, (int[2]) { -1, 1 });
+    for (int i = 0; i < 4; i++)
+    {
+        if (countLinesDirection(board, row, col, (int[2]) { directions[i][0], directions[i][1] }, true, false, true, false, NULL) == 4)
+            return true;
+    }
+    return false;
 }
 
-bool checkWinDirection(Board* board, int row, int col, int* direction)
+int countLinesDirection(Board* board, int row, int col, int* direction, bool checkBack, bool breakOnColorChange, bool resetOnEmpty, bool breakOnWall, Token* detectedPlayer)
 {
-    // direction es un vector de 2 components que indica en quina direccio ens desplaçarem per trobar 4 en linea
+    // Aquesta funció te diversos comportaments segons els paràmetres. Sempre retorna un recompte de fitxes d'un sol color trobades en la
+    // direcció seleccionada.
+
+    // direction es un vector de 2 components que indica en quina direccio ens desplaçarem per comptar
     // direction pot ser (1,0), (0,1), (1,1), (-1,1), (1, -1) o (-1, -1)
-    // Recorden que la coordenada y es mesura desde el costat superior cap abaix.
+    // Recordem que la coordenada y es mesura desde el costat superior cap abaix.
 
-    // En realitat només necesitem 4 direccions ja que primer tirem endarrere (direcció inversa al parámetre) fins a 3 caselles
-    // o bé fins al límit del tauler, i després avancem cap endevant contant quantes fitxes en linia hi ha fins a un maxim de
-    // 6 caselles o be fins a trobar un limit del tauler.
-    // Per tant les direccions inverses comproven el mateix tros de tauler.
-    Token token = board->m[row][col];
+    // checkBack indica si comencem a comptar fins a 3 caselles més enrrere de la posició inicial. Això és per trobar tots els
+    // possibles 4 en ratlles formats per l'última fitxa col·locada
 
+    // si breakOnColorChange es true, en el moment en el que la l'àrea del tauler que s'està comprovant conté fitxes dels
+    // dos colors la funció retorna 0. Això és útil per assegurar que és possible fer 4 en ratlla en aquesta zona si checkBack es false.
+
+    // si resetOnEmpty es true, trobar-se un espai buit reinicia el recompte a 0. Això obliga a que les fitxes siguin consecutives.
+
+    // si breakOnWall es true, només es comprova la direcció si es pot fer 4 en ratlla cap endevant sense xocar amb un límit
+    // del tauler. És útil per tenir en compte només àrees on es pot fer 4 en ratlla si checkBack es false.
+
+    // si se li pasa una direcció a detectedPlayer, s'entén que la casella inicial pot estar buida i comença a comptar en favor
+    // de la primera fitxa que es trobi. Retorna llavors per quin jugador ha sigut el recompte.
+
+    // Per comprovar si el moviment de row,col ha guanyat: checkBack = true, breakOnColorChange = false, resetOnEmpty = true, breakOnWall = false, detectedPlayer = NULL
+    // Per comprovar si s'ha guanyat només necesitem 4 direccions ja que primer tirem endarrere (direcció inversa al parámetre)
+    // fins a 3 caselles o bé fins al límit del tauler, i després avancem cap endevant comptant quantes fitxes en linia hi ha
+    // fins a un maxim de 6 caselles o be fins a trobar un limit del tauler. Per tant les direccions inverses comproven el mateix tros de tauler.
+
+    // Per comprovar com d'aprop és un jugador de fer 4 en ratlla a una zona en particular del tauler:
+    // checkBack = false, breakOnColorChange = true, resetOnEmpty = false, breakOnWall = true, detectedPlayer amb valor
+
+    Token currentToken = EMPTY;
+    if (!detectedPlayer)
+    {
+        currentToken = board->m[row][col];
+    }
     int verticalBackLimit = direction[1] == 1 ? row : direction[1] == 0 ? max(NUM_COLS, NUM_ROWS) : NUM_ROWS - row - 1;
     int horizontalBackLimit = direction[0] == 1 ? col : direction[0] == 0 ? max(NUM_COLS, NUM_ROWS) : NUM_COLS - col - 1;
-    int backLimit = min(min(verticalBackLimit, horizontalBackLimit), 3);
+    int backLimit = checkBack ? min(min(verticalBackLimit, horizontalBackLimit), 3) : 0;
     int startRow = row - direction[1] * backLimit;
     int startCol = col - direction[0] * backLimit;
 
     int verticalFrontLimit = direction[1] == 1 ? NUM_ROWS - row - 1 : direction[1] == 0 ? max(NUM_COLS, NUM_ROWS) : row;
     int horizontalFrontLimit = direction[0] == 1 ? NUM_COLS - col - 1 : direction[0] == 0 ? max(NUM_COLS, NUM_ROWS) : col;
     int frontLimit = min(min(verticalFrontLimit, horizontalFrontLimit), 3);
+    if (breakOnWall && frontLimit != 3) return 0;
 
     int count = 0;
+    Token val;
     for (int k = 0; k <= backLimit + frontLimit; k++)
     {
-        if (board->m[startRow + direction[1] * k][startCol + direction[0] * k] == token)
+        val = board->m[startRow + direction[1] * k][startCol + direction[0] * k];
+        if (currentToken == EMPTY)
+        {
+            if (val != EMPTY)
+            {
+                currentToken = val;
+                *detectedPlayer = currentToken;
+            }
+            else
+            {
+                continue;
+            }
+        }
+        if (val == currentToken)
         {
             count++;
+        }
+        else if (val == EMPTY)
+        {
+            if (resetOnEmpty)
+                count = 0;
         }
         else
         {
             count = 0;
+            if (breakOnColorChange)
+                return count;
         }
         if (count >= 4)
         {
-            return true;
+            return 4;
         }
     }
-    return false;
+    if (currentToken == EMPTY)
+        *detectedPlayer = EMPTY;
+    return count;
 }
 
+/* // No s'utilitza
 Token checkWinFull(Board* board)
 {
     // Aquesta funcio comprova tot el tauler i retorna el jugador que ha guanyat si n'hi ha cap, 0 en cas contrari.
@@ -234,6 +293,7 @@ Token checkWinFull(Board* board)
 
     return EMPTY;
 }
+*/
 
 bool boardIsFull(Board* board)
 {
@@ -255,6 +315,8 @@ int getFreeColumnsCount(Board* board)
 
 int* getFreeColumnsArray(Board* board, int freeCount)
 {
+    // Retorna array amb les columnes buides
+
     if (!freeCount) return NULL;
     int* res = malloc(freeCount * sizeof(int));
     if (!res)
@@ -274,40 +336,10 @@ int* getFreeColumnsArray(Board* board, int freeCount)
     return res;
 }
 
-/*
-int* getFreeColumnsArray(Board* board, int* freeCount)
-{
-    int buff[NUM_COLS];
-    int count = 0;
-    for (int j = 0; j < NUM_COLS; j++) // Per cada columna, comprova si està buida i en aquest cas guarda-la al següent lloc lliure
-    {
-        if (board->m[0][j] == EMPTY)
-        {
-            buff[count++] = j;
-        }
-    }
-    *freeCount = count;
-
-    if (!count) return NULL;
-    int* res = malloc(count * sizeof(int));
-    if (!res)
-    {
-        printf("Error de memoria.\n");
-        *freeCount = -1;
-        return NULL;
-    }
-
-    for (int i = 0; i < count; i++)
-    {
-        res[i] = buff[i];
-    }
-
-    return res;
-}
-*/
-
 int getWeightedSum(Board* board)
 {
+    // Funció utilitzada durant la valoració del tauler. Puntúa més favorablement les fitxes a les columnes centrals
+
     Token current = getCurrentPlayer(board);
     int weight;
     int sumCurr = 0;
@@ -316,11 +348,11 @@ int getWeightedSum(Board* board)
     {
         if (NUM_COLS % 2 == 0)
         {
-            if (j == NUM_COLS / 2 || j == NUM_COLS / 2 + 1)
+            if (j == NUM_COLS / 2 - 1 || j == NUM_COLS / 2)
             {
                 weight = 2;
             }
-            else if (j == NUM_COLS / 2 - 1 || j == NUM_COLS / 2 + 2)
+            else if (j == NUM_COLS / 2 - 2 || j == NUM_COLS / 2 + 1)
             {
                 weight = 1;
             }
@@ -333,7 +365,7 @@ int getWeightedSum(Board* board)
         {
             if (j == NUM_COLS / 2)
             {
-                weight = 2;
+                weight = 3;
             }
             else if (j == NUM_COLS / 2 + 1 || j == NUM_COLS / 2 - 1)
             {
@@ -359,6 +391,54 @@ int getWeightedSum(Board* board)
             {
                 sumOpo += weight;
             }
+        }
+    }
+
+    return sumCurr - sumOpo;
+}
+
+
+int allPossibleLinesSum(Board* board)
+{
+    // Funció utilitzada durant la valoració del tauler. Retorna una puntuació més favorable
+    // quantes més zones obertes on sigui possible fer 4 en ratlla hi hagi.
+
+    Token current = getCurrentPlayer(board);
+    int sumCurr = 0;
+    int sumOpo = 0;
+
+    for (int i = 0; i < NUM_ROWS; i++)
+    {
+        for (int j = 0; j < NUM_COLS; j++)
+        {
+
+            for (int k = 0; k < 4; k++)
+            {
+                Token player;
+                int count = countLinesDirection(board, i, j, (int[2]) { directions[k][0], directions[k][1] }, false, true, false, true, &player);
+                if (player == EMPTY)
+                    continue;
+                int value = 0;
+                if (count == 2)
+                {
+                    value = 1;
+                }
+                else if (count == 3)
+                {
+                    value = 2;
+                }
+
+                if (board->m[i][j] == current)
+                {
+                    sumCurr += value;
+                }
+                else
+                {
+                    sumOpo += value;
+                }
+            }
+
+            
         }
     }
 

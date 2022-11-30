@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int mainConsole(Token firstPlayer, bool twoplayers)
+int mainConsole(Token firstPlayer, bool twoplayers, int maxdepth, bool difficulty)
 {
     Board board;
     initializeBoard(&board, firstPlayer);
@@ -21,7 +21,7 @@ int mainConsole(Token firstPlayer, bool twoplayers)
         int col, row;
         if (!twoplayers && currentPlayer == PLAYER2)
         {
-            col = miniMaxGetPlay(&board);
+            col = miniMaxGetPlay(&board, maxdepth, difficulty);
             if (col == -1)
                 return -1;
             row = placeToken(&board, col);
@@ -33,7 +33,7 @@ int mainConsole(Token firstPlayer, bool twoplayers)
                 // Agafem la columna on l'usuari vol colocar
                 printf("\nJugador %s %d " ANSI_COLOR_RESET ", columna?\n", COLOR(currentPlayer), currentPlayer);
                 getUserInput(&col, 1, NUM_COLS, true);
-                // Coloquem la fitxa i mirem que no estigui a una columna plena, si no es torna a repetir el proces
+                // Coloquem la fitxa i mirem que no estigui a una columna plena, si no es torna a repetir el procés
                 row = placeToken(&board, col);
                 if (row != -1)
                 {
